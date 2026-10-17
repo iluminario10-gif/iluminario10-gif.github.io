@@ -119,10 +119,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .dia.hoje{border-color:var(--accent)}
 .dia.sel{background:var(--surface-2);border-color:var(--ink)}
 .dia .pontos{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;min-height:7px}
-.dia .pontos i{width:6px;height:6px;border-radius:50%;background:var(--tom,var(--accent));display:block}
+.dia .pontos i{width:7px;height:7px;border-radius:50%;background:var(--tom,var(--accent));display:block}
 .dia .pontos i.anel{background:transparent;box-shadow:inset 0 0 0 1.5px var(--tom,var(--accent))}
 .dia .barras{position:absolute;left:3px;right:3px;bottom:4px;display:grid;gap:2px}
 .dia .barras i{display:block;height:4px;border-radius:3px;background:var(--tom,var(--accent))}
+.dia em.mais{font-style:normal;font-size:10px;font-weight:700;line-height:1;color:var(--muted);align-self:center}
 .legenda{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--muted);margin-top:12px;align-items:center}
 .legenda span{display:inline-flex;align-items:center;gap:6px}
 .legenda i{width:10px;height:10px;border-radius:50%;background:var(--tom,var(--accent));display:inline-block}
@@ -252,7 +253,7 @@ button:active{transform:scale(.97)}
   <section id="ficha" hidden></section>
   <section id="historico" hidden></section>
 </main>
-<p class="rodape" id="versao">Patinhas em Dia · versão 1.6</p>
+<p class="rodape" id="versao">Patinhas em Dia · versão 1.7</p>
 
 <datalist id="bancoRemedios"></datalist>
 <input type="file" id="arquivo" accept="application/json,.json" hidden>
@@ -262,7 +263,7 @@ button:active{transform:scale(.97)}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS = 'patinhas-em-dia-v1';
-const VERSAO = '1.6';
+const VERSAO = '1.7';
 const TIPOS = {peso:'Peso', vacina:'Vacina', vermifugo:'Vermífugo', consulta:'Consulta', remedio:'Remédio', sintoma:'Observação'};
 const TIPOS_REGISTRO = Object.entries(TIPOS).filter(([k]) => k !== 'remedio');
 const TIPO_COR = {peso:'#3B6FB6', vacina:'#23704F', vermifugo:'#B7800F', consulta:'#8E5BB5', sintoma:'#7C8A83', remedio:'#C2497A'};
@@ -377,9 +378,12 @@ const atual = () => state.cats.find(c => c.id === catId);
 const pesos = (c) => c.eventos.filter(e => e.tipo === 'peso' && e.valor != null).sort((a, b) => a.data.localeCompare(b.data));
 const ultimoPeso = (c) => { const p = pesos(c); return p[p.length - 1]; };
 function lembretes(){
-  const r = [];
-  state.cats.forEach(c => c.eventos.forEach(e => { if (e.proxima) r.push({c, e, d: dias(e.proxima, hoje())}); }));
-  return r.sort((a, b) => a.e.proxima.localeCompare(b.e.proxima));
+  const r = [], h = hoje();
+  state.cats.forEach(c => c.eventos.forEach(e => {
+    if (e.proxima) r.push({c, e, d: dias(e.proxima, h), data: e.proxima, agendado: false});
+    else if (INTERVALO[e.tipo] && e.data > h) r.push({c, e, d: dias(e.data, h), data: e.data, agendado: true});
+  }));
+  return r.sort((a, b) => a.data.localeCompare(b.data));
 }
 function avatar(c, grande){
   const cls = `avatar${grande ? ' g' : ''}`;
@@ -465,10 +469,11 @@ function tituloMes(mes){
   return cap(new Date(y, m - 1, 1).toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'}));
 }
 function eventosDoDia(d, cats){
-  const out = [];
+  const out = [], h = hoje();
   cats.forEach(c => c.eventos.forEach(e => {
-    if (e.data === d) out.push({c, e, ret: false});
-    if (e.proxima === d) out.push({c, e, ret: true});
+    const agendado = !!INTERVALO[e.tipo] && e.data > h;
+    if (e.data === d) out.push({c, e, ret: agendado, agendado});
+    if (e.proxima === d) out.push({c, e, ret: true, agendado: false});
   }));
   return out;
 }
@@ -482,8 +487,8 @@ function renderCalendario(escopo, mes, dia, cats, porTipo){
   const celulas = gradeMes(mes).map(d => {
     if (!d) return '<span></span>';
     const evs = eventosDoDia(d, cats), meds = remediosNoDia(d, cats);
-    const pontos = evs.slice(0, 4).map(({c, e, ret}) => `<i class="${ret ? 'anel' : ''}" style="--tom:${porTipo ? TIPO_COR[e.tipo] : TONS[c.tom]}"></i>`).join('');
-    const barras = meds.slice(0, 3).map(({c}) => `<i style="--tom:${TONS[c.tom]}"></i>`).join('');
+    const pontos = evs.slice(0, 4).map(({c, e, ret}) => `<i class="${ret ? 'anel' : ''}" style="--tom:${porTipo ? TIPO_COR[e.tipo] : TONS[c.tom]}"></i>`).join('') + (evs.length > 4 ? `<em class="mais">+${evs.length - 4}</em>` : '');
+    const barras = meds.slice(0, 3).map(({c}) => `<i style="--tom:${TONS[c.tom]}"></i>`).join('') + (meds.length > 3 ? `<em class="mais">+${meds.length - 3}</em>` : '');
     return `<button type="button" class="dia${d === h ? ' hoje' : ''}${d === dia ? ' sel' : ''}" data-act="cal-dia" data-cal="${escopo}" data-d="${d}" aria-label="${fmtData(d)}">
       <span>${Number(d.slice(8))}</span><span class="pontos">${pontos}</span><span class="barras">${barras}</span></button>`;
   }).join('');
@@ -500,7 +505,7 @@ function painelDia(d, cats, alvos){
   const titulo = cap(new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'}));
   let h = `<div class="card pilha"><h3>${esc(titulo)}</h3>`;
   if (!evs.length && !meds.length) h += `<p class="muted">Nada marcado neste dia.</p>`;
-  h += evs.map(({c, e, ret}) => `<div class="linha"><div style="min-width:0"><strong>${esc(TIPOS[e.tipo])} · ${esc(c.nome)}</strong><div class="muted small">${ret ? 'Retorno previsto' : 'Registrado'}${e.nota ? ' · ' + esc(e.nota) : ''}</div></div></div>`).join('');
+  h += evs.map(({c, e, ret, agendado}) => `<div class="linha"><div style="min-width:0"><strong>${esc(TIPOS[e.tipo])} · ${esc(c.nome)}</strong><div class="muted small">${agendado ? 'Agendado' : ret ? 'Retorno previsto' : 'Registrado'}${e.nota ? ' · ' + esc(e.nota) : ''}</div></div></div>`).join('');
   const doses = meds.filter(({r}) => r.horarios && r.horarios.length).flatMap(({c, r}) => r.horarios.map(hr => ({c, r, hr})));
   doses.sort((a, b) => a.hr.localeCompare(b.hr) || a.c.nome.localeCompare(b.c.nome, 'pt-BR'));
   h += doses.map(({c, r, hr}) => doseHTML(c, r, hr, d)).join('');
@@ -633,10 +638,10 @@ function renderHoje(){
     if (!lista.length) {
       h += `<div class="card vazio"><h3>Tudo em dia</h3><p class="muted">Nenhuma data de retorno marcada. Ao registrar uma vacina, um vermífugo ou uma consulta, a próxima data entra aqui sozinha.</p></div>`;
     } else {
-      h += `<div class="card">` + lista.map(({c, e, d}) => {
+      h += `<div class="card">` + lista.map(({c, e, d, data, agendado}) => {
         const cls = d < 0 ? 'bad' : d <= 14 ? 'warn' : 'ok';
         const txt = d < 0 ? `Atrasado há ${plural(-d, 'dia', 'dias')}` : d === 0 ? 'Hoje' : `Faltam ${plural(d, 'dia', 'dias')}`;
-        return `<div class="linha"><div style="min-width:0"><strong>${esc(TIPOS[e.tipo])} · ${esc(c.nome)}</strong><div class="muted small">Até ${fmtData(e.proxima)}${e.nota ? ' · ' + esc(e.nota) : ''}</div></div>
+        return `<div class="linha"><div style="min-width:0"><strong>${esc(TIPOS[e.tipo])} · ${esc(c.nome)}</strong><div class="muted small">${agendado ? 'Agendado para' : 'Até'} ${fmtData(data)}${e.nota ? ' · ' + esc(e.nota) : ''}</div></div>
           <div class="acoes-linha"><span class="tag ${cls}">${txt}</span><button type="button" class="ghost pequeno" data-act="registrar" data-id="${esc(c.id)}" data-tipo="${esc(e.tipo)}" data-nota="${esc(e.nota)}">Registrar</button></div></div>`;
       }).join('') + `</div>`;
     }
