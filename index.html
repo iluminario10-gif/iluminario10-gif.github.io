@@ -124,6 +124,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .dia .barras{position:absolute;left:3px;right:3px;bottom:4px;display:grid;gap:2px}
 .dia .barras i{display:block;height:4px;border-radius:3px;background:var(--tom,var(--accent))}
 .dia em.mais{font-style:normal;font-size:10px;font-weight:700;line-height:1;color:var(--muted);align-self:center}
+.grade.tudo .dia{min-height:64px;overflow:visible}
+.grade.tudo .dia .pontos{min-height:0;flex-wrap:wrap;max-width:100%}
+.grade.tudo .dia .barras{position:static;width:100%;display:grid;gap:2px;padding:0 3px;box-sizing:border-box}
 .legenda{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--muted);margin-top:12px;align-items:center}
 .legenda span{display:inline-flex;align-items:center;gap:6px}
 .legenda i{width:10px;height:10px;border-radius:50%;background:var(--tom,var(--accent));display:inline-block}
@@ -217,6 +220,10 @@ button:active{transform:scale(.97)}
 .chips-banco span{animation:entrar .25s ease-out both}
 .rd-item{transition:transform .18s ease,opacity .18s ease}
 .toast:not([hidden]){animation:toast .3s ease-out both}
+.atualizar{position:fixed;left:0;right:0;top:0;z-index:30;display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top,0px));background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:700;box-shadow:var(--shadow)}
+.atualizar span{flex:1;min-width:0}
+.atualizar button{min-height:36px;padding:7px 14px;font-size:13px;background:var(--surface);color:var(--ink)}
+.atualizar button.fechar{background:transparent;color:var(--accent-ink);min-height:36px;padding:4px 10px;font-size:20px;line-height:1}
 @keyframes toast{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
@@ -253,17 +260,22 @@ button:active{transform:scale(.97)}
   <section id="ficha" hidden></section>
   <section id="historico" hidden></section>
 </main>
-<p class="rodape" id="versao">Patinhas em Dia · versão 1.7</p>
+<p class="rodape" id="versao">Patinhas em Dia · versão 1.8</p>
 
 <datalist id="bancoRemedios"></datalist>
 <input type="file" id="arquivo" accept="application/json,.json" hidden>
+<div class="atualizar" id="atualizar" role="status" hidden>
+  <span id="atualizar-texto">Atualização disponível</span>
+  <button type="button" id="atualizar-btn">Atualizar</button>
+  <button type="button" class="fechar" id="atualizar-fechar" aria-label="Fechar aviso">×</button>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS = 'patinhas-em-dia-v1';
-const VERSAO = '1.7';
+const VERSAO = '1.8';
 const TIPOS = {peso:'Peso', vacina:'Vacina', vermifugo:'Vermífugo', consulta:'Consulta', remedio:'Remédio', sintoma:'Observação'};
 const TIPOS_REGISTRO = Object.entries(TIPOS).filter(([k]) => k !== 'remedio');
 const TIPO_COR = {peso:'#3B6FB6', vacina:'#23704F', vermifugo:'#B7800F', consulta:'#8E5BB5', sintoma:'#7C8A83', remedio:'#C2497A'};
@@ -317,6 +329,8 @@ let view = 'hoje', catId = null, editando = false, resumoAberto = false, prefill
 let histFiltro = 'todos', importacao = null, armado = null, armTimer = null;
 let calMes = hoje().slice(0, 7), calDia = hoje(), calFiltro = 'todos';
 let calCatMes = hoje().slice(0, 7), calCatDia = hoje();
+let calTudo = false;
+try { calTudo = localStorage.getItem('patinhas-cal-tudo') === '1'; } catch (_) {}
 
 function norm(x){
   if (!x || !Array.isArray(x.cats)) return {cats: [], bancoExtra: []};
@@ -487,8 +501,9 @@ function renderCalendario(escopo, mes, dia, cats, porTipo){
   const celulas = gradeMes(mes).map(d => {
     if (!d) return '<span></span>';
     const evs = eventosDoDia(d, cats), meds = remediosNoDia(d, cats);
-    const pontos = evs.slice(0, 4).map(({c, e, ret}) => `<i class="${ret ? 'anel' : ''}" style="--tom:${porTipo ? TIPO_COR[e.tipo] : TONS[c.tom]}"></i>`).join('') + (evs.length > 4 ? `<em class="mais">+${evs.length - 4}</em>` : '');
-    const barras = meds.slice(0, 3).map(({c}) => `<i style="--tom:${TONS[c.tom]}"></i>`).join('') + (meds.length > 3 ? `<em class="mais">+${meds.length - 3}</em>` : '');
+    const cortaEv = !calTudo && evs.length > 4, cortaMed = !calTudo && meds.length > 3;
+    const pontos = (cortaEv ? evs.slice(0, 4) : evs).map(({c, e, ret}) => `<i class="${ret ? 'anel' : ''}" style="--tom:${porTipo ? TIPO_COR[e.tipo] : TONS[c.tom]}"></i>`).join('') + (cortaEv ? `<em class="mais">+${evs.length - 4}</em>` : '');
+    const barras = (cortaMed ? meds.slice(0, 3) : meds).map(({c}) => `<i style="--tom:${TONS[c.tom]}"></i>`).join('') + (cortaMed ? `<em class="mais">+${meds.length - 3}</em>` : '');
     return `<button type="button" class="dia${d === h ? ' hoje' : ''}${d === dia ? ' sel' : ''}" data-act="cal-dia" data-cal="${escopo}" data-d="${d}" aria-label="${fmtData(d)}">
       <span>${Number(d.slice(8))}</span><span class="pontos">${pontos}</span><span class="barras">${barras}</span></button>`;
   }).join('');
@@ -498,7 +513,7 @@ function renderCalendario(escopo, mes, dia, cats, porTipo){
       <button type="button" class="iconbtn" data-act="cal-mes" data-cal="${escopo}" data-delta="1" aria-label="Próximo mês">›</button>
     </div>
     <div class="dias-sem" aria-hidden="true"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
-    <div class="grade">${celulas}</div>`;
+    <div class="grade${calTudo ? ' tudo' : ''}">${celulas}</div>`;
 }
 function painelDia(d, cats, alvos){
   const evs = eventosDoDia(d, cats), meds = remediosNoDia(d, cats);
@@ -521,7 +536,7 @@ function renderCalendarioTab(){
     $('#calendario').innerHTML = `<div class="sec"><h2>Calendário</h2></div><div class="card vazio"><div class="icone">${ICONE_PATA}</div><h2>Nada para mostrar ainda</h2><p class="muted">Cadastre um gato para ver as datas de vacinas, consultas e remédios no calendário.</p><div class="acoes" style="justify-content:center;margin-top:14px"><button type="button" data-tab="gatos">Cadastrar gato</button></div></div>`;
     return;
   }
-  let h = `<div class="sec"><h2>Calendário</h2><button type="button" class="ghost pequeno" data-act="cal-hoje">Hoje</button></div>`;
+  let h = `<div class="sec"><h2>Calendário</h2><div class="acoes"><button type="button" class="ghost pequeno" aria-pressed="${calTudo}" data-act="cal-modo">${calTudo ? 'Resumir' : 'Ver tudo'}</button><button type="button" class="ghost pequeno" data-act="cal-hoje">Hoje</button></div></div>`;
   h += `<div class="filtros">${[['todos', 'Todos'], ...state.cats.map(c => [c.id, c.nome])].map(([k, v]) => {
     const c = state.cats.find(x => x.id === k);
     return `<button type="button" class="filtro" style="--tom:${c ? TONS[c.tom] : 'var(--ink)'}" aria-pressed="${calFiltro === k}" data-act="cal-filtro" data-f="${esc(k)}">${c ? '<i aria-hidden="true"></i>' : ''}${esc(v)}</button>`;
@@ -1043,6 +1058,7 @@ document.addEventListener('click', (ev) => {
     case 'cal-ontem': { const o = somaDias(hoje(), -1); calMes = o.slice(0, 7); calDia = o; calFiltro = 'todos'; view = 'calendario'; break; }
     case 'cal-hoje': calMes = hoje().slice(0, 7); calDia = hoje(); break;
     case 'cal-filtro': calFiltro = el.dataset.f; break;
+    case 'cal-modo': calTudo = !calTudo; try { localStorage.setItem('patinhas-cal-tudo', calTudo ? '1' : '0'); } catch (_) {} break;
     case 'filtro': histFiltro = el.dataset.f; break;
     case 'exportar': exportar(); break;
     case 'importar': $('#arquivo').click(); return;
@@ -1261,6 +1277,40 @@ function verificarDoses(){
 
 // Instalação
 $('#logo').innerHTML = ICONE_PATA;
+// Aviso de atualização: confere a versão publicada e mostra o botão Atualizar
+function maisNova(a, b){
+  const x = a.split('.').map(Number), y = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++){
+    const d = (x[i] || 0) - (y[i] || 0);
+    if (d) return d > 0;
+  }
+  return false;
+}
+let versaoNova = null;
+async function verificarAtualizacao(){
+  if (versaoNova) return;
+  try {
+    const res = await fetch('./index.html', {cache: 'no-store'});
+    if (!res.ok) return;
+    const m = (await res.text()).match(/const VERSAO = '([\d.]+)'/);
+    if (m && maisNova(m[1], VERSAO)) {
+      versaoNova = m[1];
+      $('#atualizar-texto').textContent = 'Atualização ' + versaoNova + ' disponível';
+      $('#atualizar').hidden = false;
+    }
+  } catch (_) {}
+}
+$('#atualizar-btn').addEventListener('click', async () => {
+  try {
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+  } catch (_) {}
+  location.replace('./?versao=' + encodeURIComponent(versaoNova || VERSAO));
+});
+$('#atualizar-fechar').addEventListener('click', () => { $('#atualizar').hidden = true; });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verificarAtualizacao(); });
+setInterval(verificarAtualizacao, 30 * 60 * 1000);
+verificarAtualizacao();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 let promptInstalar = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); promptInstalar = e; $('#instalar').hidden = false; });

@@ -1,4 +1,4 @@
-const CACHE = 'patinhas-v9';
+const CACHE = 'patinhas-v10';
 const ARQUIVOS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
