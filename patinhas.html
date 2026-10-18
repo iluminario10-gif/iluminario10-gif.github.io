@@ -263,7 +263,7 @@ button:active{transform:scale(.97)}
   <section id="ficha" hidden></section>
   <section id="historico" hidden></section>
 </main>
-<p class="rodape" id="versao">Patinhas em Dia · versão 1.9</p>
+<p class="rodape" id="versao">Patinhas em Dia · versão 1.10</p>
 
 <datalist id="bancoRemedios"></datalist>
 <input type="file" id="arquivo" accept="application/json,.json" hidden>
@@ -278,7 +278,7 @@ button:active{transform:scale(.97)}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS = 'patinhas-em-dia-v1';
-const VERSAO = '1.9';
+const VERSAO = '1.10';
 const TIPOS = {peso:'Peso', vacina:'Vacina', vermifugo:'Vermífugo', consulta:'Consulta', remedio:'Remédio', sintoma:'Observação'};
 const TIPOS_REGISTRO = Object.entries(TIPOS).filter(([k]) => k !== 'remedio');
 const TIPO_COR = {peso:'#3B6FB6', vacina:'#23704F', vermifugo:'#B7800F', consulta:'#8E5BB5', sintoma:'#7C8A83', remedio:'#C2497A'};

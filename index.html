@@ -40,6 +40,12 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
 .instalar[hidden]{display:none}
 .ver-hoje{display:block;text-align:center;margin-top:22px;padding:13px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--accent);font-weight:700;text-decoration:none}
 .rodape{color:var(--muted);font-size:12.5px;text-align:center;margin-top:24px;line-height:1.5}
+.app .t{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.versao{font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.versao:empty{display:none}
+.versao-hub{color:var(--muted);font-size:13.5px;text-align:center;margin:20px 0 0;line-height:1.5}
+.versao-hub strong{color:var(--ink)}
+.versao-hub a{color:var(--accent);font-weight:700;text-decoration:none}
 </style>
 </head>
 <body>
@@ -58,7 +64,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     <a class="app" href="patinhas.html">
       <img src="icon-192.png" alt="">
       <div>
-        <div class="t">Patinhas em Dia</div>
+        <div class="t">Patinhas em Dia <span class="versao" data-versao="patinhas"></span></div>
         <div class="d">Saúde dos gatos: lembretes, peso, consultas e resumo para o veterinário.</div>
         <div class="r" data-resumo="patinhas"></div>
       </div>
@@ -68,7 +74,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     <a class="app" href="maison.html">
       <img src="maison-icon-192.png" alt="">
       <div>
-        <div class="t">Maison de Lavande</div>
+        <div class="t">Maison de Lavande <span class="versao" data-versao="maison"></span></div>
         <div class="d">Vendas, compras, estoque e lucro da loja.</div>
         <div class="r" data-resumo="maison"></div>
       </div>
@@ -78,7 +84,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     <a class="app" href="listas.html">
       <img src="listas-icon-192.png" alt="">
       <div>
-        <div class="t">Listas</div>
+        <div class="t">Listas <span class="versao" data-versao="listas"></span></div>
         <div class="d">Listas de mercado, farmácia, pet shop e casa, com pastas por loja.</div>
         <div class="r" data-resumo="listas"></div>
       </div>
@@ -98,8 +104,11 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
 
   <a class="ver-hoje" href="hoje.html">Ver tudo de hoje ›</a>
 
+  <p class="versao-hub">Meus apps · <strong>versão <span id="hub-versao"></span></strong> · <a href="novidades.html">Novidades e histórico ›</a></p>
+
   <p class="rodape">Cada aplicativo guarda seus dados neste aparelho.<br>Para trocar de app, use o botão “‹ Menu” no topo de cada um.</p>
 </main>
+<script src="versoes.js"></script>
 <script>
 (function () {
   'use strict';
@@ -183,6 +192,19 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     });
     try { mostrarPendencias(); } catch (e) { /* a faixa de pendências é opcional */ }
   }
+
+  // Versões: o número de cada app aparece ao lado do nome, e a do Meus apps no rodapé (vem de versoes.js).
+  function mostrarVersoes() {
+    const V = window.MEUS_APPS_VERSOES;
+    if (!V) return;
+    document.querySelectorAll('[data-versao]').forEach(function (el) {
+      const app = V[el.getAttribute('data-versao')];
+      if (app && app.atual) el.textContent = 'v' + app.atual;
+    });
+    const h = document.getElementById('hub-versao');
+    if (h && V.hub) h.textContent = V.hub.atual;
+  }
+  mostrarVersoes();
 
   atualizarResumos();
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') atualizarResumos(); });

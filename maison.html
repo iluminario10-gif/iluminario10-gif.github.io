@@ -1709,12 +1709,19 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   const Calc = root.Calc, Store = root.Store, UI = root.UI;
   const { esc } = UI;
 
-  const VERSAO_ATUAL = '1.2';
+  const VERSAO_ATUAL = '1.3';
 
   const NOVIDADES = [
     {
-      versao: '1.2',
+      versao: '1.3',
       status: 'Versão atual',
+      itens: [
+        'Tocar em um item do Hoje (menu) abre direto a tela certa: estoque, vendas ou compras.',
+      ],
+    },
+    {
+      versao: '1.2',
+      status: 'Versão anterior',
       itens: [
         'Meta mensal de faturamento, com barra de progresso no Painel. Defina em Configurações.',
         'Projeção do mês: no ritmo atual, quanto o mês deve fechar.',
