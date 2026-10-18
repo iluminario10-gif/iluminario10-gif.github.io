@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
+<!-- letras opcionais (Configurações → Letra) ficam em outro link: se uma falhar, as letras padrão continuam -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap">
 <style>
 :root {
   --bg: #F8F5FC;
@@ -33,6 +35,9 @@
   --bad-soft: #FBE2DF;
   --shadow: 0 1px 2px rgba(42, 33, 64, .05), 0 8px 22px rgba(42, 33, 64, .07);
   --radius: 16px;
+  /* letras: o app troca estas duas variáveis conforme a escolha em Configurações → Letra (ui.js) */
+  --fonte-corpo: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte-titulo: 'Cormorant Garamond', Georgia, serif;
   color-scheme: light;
 }
 
@@ -62,14 +67,14 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--fonte-corpo);
   background: var(--bg);
   color: var(--ink);
   font-size: 15px;
   line-height: 1.45;
   -webkit-tap-highlight-color: transparent;
 }
-h1, h2, h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; margin: 0; letter-spacing: .2px; }
+h1, h2, h3 { font-family: var(--fonte-titulo); font-weight: 700; margin: 0; letter-spacing: .2px; }
 h1 { font-size: 28px; }
 h2 { font-size: 22px; }
 h3 { font-size: 17px; }
@@ -86,7 +91,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand-mark { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; display: block; }
-.brand-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-title { font-family: var(--fonte-titulo); font-size: 19px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-sub { font-size: 12px; color: var(--muted); }
 .icon-btn {
   border: 0; background: var(--surface); width: 40px; height: 40px; border-radius: 12px;
@@ -116,7 +121,7 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   border: 1px solid var(--line);
 }
 .kpi-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
-.kpi-value { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; font-weight: 700; margin-top: 2px; }
+.kpi-value { font-family: var(--fonte-titulo); font-size: 26px; font-weight: 700; margin-top: 2px; }
 .kpi-delta { font-size: 12.5px; margin-top: 2px; }
 .kpi.wide { grid-column: 1 / -1; }
 .up { color: var(--ok); }
@@ -236,7 +241,7 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
 
 /* ---------- estados vazios e avisos ---------- */
 .empty { text-align: center; padding: 26px 12px; color: var(--muted); }
-.empty strong { display: block; color: var(--ink); margin-bottom: 4px; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; }
+.empty strong { display: block; color: var(--ink); margin-bottom: 4px; font-family: var(--fonte-titulo); font-size: 19px; }
 .toast {
   position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translateX(-50%);
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 30;
@@ -261,6 +266,23 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
 /* Meta mensal */
 .meta-barra { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .meta-preench { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #C9B8F0); transition: width 400ms ease; }
+
+/* Relatório de vendas */
+.rel-previa { margin-top: 4px; }
+.rel-canvas { display: block; width: 100%; height: auto; margin-top: 14px; border-radius: 12px; box-shadow: var(--shadow); background: #fff; }
+.rel-baixar { margin-top: 12px; }
+
+/* Configurações → Letra: uma opção por linha, com amostra na própria letra */
+.fonte-lista { display: grid; gap: 8px; }
+.fonte-opcao {
+  display: grid; gap: 3px; width: 100%; text-align: left; cursor: pointer;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font: inherit;
+}
+.fonte-opcao[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); padding: 11px 13px; }
+.fonte-opcao .fo-nome { font-size: 15px; font-weight: 700; }
+.fonte-opcao .fo-amostra { font-size: 20px; line-height: 1.3; }
+.fonte-opcao small { color: var(--muted); font-size: 13px; line-height: 1.35; }
 </style>
 <title>Maison de Lavande</title>
 </head>
@@ -539,7 +561,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   if (typeof module !== 'undefined' && module.exports) module.exports = Calc;
   else root.Calc = Calc;
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -710,7 +731,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   if (typeof module !== 'undefined' && module.exports) module.exports = Store;
   else root.Store = Store;
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -824,15 +844,58 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
     config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
   };
 
+  // ---------- letras ----------
+  // "corpo" e "titulo" são os nomes das famílias no Google Fonts. Em "padrao" o app usa as letras de
+  // sempre (definidas no CSS); em "sistema" usa a letra do aparelho, sem baixar nada.
+  const FONTES = {
+    padrao: { nome: 'Padrão', dica: 'A letra que o app sempre usou.', corpo: 'Figtree', titulo: 'Cormorant Garamond' },
+    legivel: { nome: 'Mais legível', dica: 'Feita para facilitar a leitura, com letras bem diferentes entre si.', corpo: 'Atkinson Hyperlegible', titulo: 'Atkinson Hyperlegible' },
+    lexend: { nome: 'Lexend', dica: 'Espaçamento e largura pensados para reduzir o esforço de leitura.', corpo: 'Lexend', titulo: 'Lexend' },
+    nunito: { nome: 'Nunito', dica: 'Letras arredondadas e de traço grosso, fáceis de ler na tela.', corpo: 'Nunito', titulo: 'Nunito' },
+    sistema: { nome: 'Do celular', dica: 'A letra do seu aparelho. Não precisa baixar nada.', corpo: null, titulo: null },
+  };
+  const SISTEMA_CSS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+
+  // Chave válida: a escolhida, ou "padrao" se a chave for desconhecida (ex.: backup antigo).
+  function fonteValida(chave) {
+    return Object.prototype.hasOwnProperty.call(FONTES, chave) ? chave : 'padrao';
+  }
+
+  // Pilha para CSS: vale para as variáveis do <html> e para a amostra de cada opção na tela.
+  function pilhaCss(chave) {
+    const k = fonteValida(chave);
+    const f = FONTES[k];
+    if (k === 'padrao') return { corpo: "'Figtree', " + SISTEMA_CSS, titulo: "'Cormorant Garamond', Georgia, serif" };
+    if (!f.corpo) return { corpo: SISTEMA_CSS, titulo: SISTEMA_CSS };
+    return { corpo: "'" + f.corpo + "', " + SISTEMA_CSS, titulo: "'" + f.titulo + "', " + SISTEMA_CSS };
+  }
+
+  // Pilha para o canvas do relatório. Em "padrao" devolve exatamente os nomes que o relatório já usa.
+  function pilhaCanvas(chave) {
+    const k = fonteValida(chave);
+    const f = FONTES[k];
+    if (k === 'padrao') return { corpo: 'Figtree, sans-serif', titulo: '"Cormorant Garamond", Georgia, serif' };
+    if (!f.corpo) return { corpo: 'system-ui, sans-serif', titulo: 'system-ui, sans-serif' };
+    return { corpo: '"' + f.corpo + '", sans-serif', titulo: '"' + f.titulo + '", sans-serif' };
+  }
+
+  // Aplica a letra escolhida no app inteiro, trocando as variáveis do <html>.
+  function aplicarFonte(chave) {
+    const r = document.documentElement.style;
+    const pilha = pilhaCss(chave);
+    r.setProperty('--fonte-corpo', pilha.corpo);
+    r.setProperty('--fonte-titulo', pilha.titulo);
+  }
+
   const UIExport = {
     esc, dinheiro, quantidade, percentual, variacao, dataBR, ler, toast,
     abrirFolha, fecharFolha, opcoesProdutos, opcoesPagamento, vazio, ICONES, state: UI,
+    FONTES, fonteValida, pilhaCss, pilhaCanvas, aplicarFonte,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = UIExport;
   else root.UI = UIExport;
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -981,6 +1044,7 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
         kpi('Ticket médio', dinheiro(atual.ticketMedio), atual.pedidos + ' pedido(s) · ' + quantidade(atual.unidades) + ' un') +
       '</div>' +
 
+      root.Views.relatorio.card() +
       cardMeta(mes, atual.faturamento) +
       '<div class="card">' +
         '<div class="card-title"><h3>Últimos 12 meses</h3></div>' +
@@ -1036,7 +1100,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   root.Views = root.Views || {};
   root.Views.painel = { render, depois, acao() {} };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -1225,7 +1288,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   root.Views = root.Views || {};
   root.Views.vendas = Vendas;
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -1412,7 +1474,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   root.Views = root.Views || {};
   root.Views.compras = Compras;
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -1532,7 +1593,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
     },
   };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -1698,7 +1758,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
     },
   };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script>
 /*
@@ -1709,12 +1768,21 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   const Calc = root.Calc, Store = root.Store, UI = root.UI;
   const { esc } = UI;
 
-  const VERSAO_ATUAL = '1.3';
+  const VERSAO_ATUAL = '1.4';
 
   const NOVIDADES = [
     {
-      versao: '1.3',
+      versao: '1.4',
       status: 'Versão atual',
+      itens: [
+        'Relatório de vendas do mês, do trimestre ou do ano, com gráfico e tabelas. Sai em PDF, PNG ou JPEG.',
+        'No começo do mês, o Painel lembra de gerar o relatório do mês que acabou.',
+        'Escolha da letra em Configurações: Mais legível, Lexend, Nunito ou a do celular. Vale para o app e para o relatório.',
+      ],
+    },
+    {
+      versao: '1.3',
+      status: 'Versão anterior',
       itens: [
         'Tocar em um item do Hoje (menu) abre direto a tela certa: estoque, vendas ou compras.',
       ],
@@ -1826,6 +1894,18 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
     return '﻿' + [cab.join(';')].concat(linhas).join('\r\n');
   }
 
+  // Uma opção por letra, cada uma escrita na própria letra, para a pessoa ver antes de escolher.
+  function opcoesFonte(atual) {
+    const escolhida = UI.fonteValida(atual);
+    return Object.keys(UI.FONTES).map((k) => {
+      const f = UI.FONTES[k];
+      return '<button type="button" class="fonte-opcao" data-act="config.fonte" data-fonte="' + k + '" aria-pressed="' + (k === escolhida) + '">' +
+        '<span class="fo-nome">' + esc(f.nome) + '</span>' +
+        '<span class="fo-amostra" style="font-family:' + UI.pilhaCss(k).corpo + '">Maison de Lavande · 142,00</span>' +
+        '<small>' + esc(f.dica) + '</small></button>';
+    }).join('');
+  }
+
   function render() {
     const cfg = Store.get().configuracoes;
     return '' +
@@ -1834,6 +1914,9 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
       '<div class="card"><div class="card-title"><h3>Loja</h3></div>' +
         '<div class="field"><label for="cfg-nome">Nome exibido no painel</label>' +
         '<input id="cfg-nome" value="' + esc(cfg.nomeLoja) + '" data-act-change="config.nome"></div></div>' +
+      '<div class="card"><div class="card-title"><h3>Letra</h3></div>' +
+        '<p class="muted small" style="margin-top:0">Escolha a letra mais confortável de ler. Ela vale para o app inteiro e para o relatório.</p>' +
+        '<div class="fonte-lista" role="group" aria-label="Letra do app">' + opcoesFonte(cfg.fonte) + '</div></div>' +
       '<div class="card"><div class="card-title"><h3>Meta do mês</h3></div>' +
         '<div class="field"><label for="cfg-meta">Meta de faturamento por mês (R$)</label>' +
         '<input id="cfg-meta" inputmode="decimal" placeholder="Ex.: 3000" value="' + (cfg.metaMensal ? esc(String(cfg.metaMensal).replace('.', ',')) : '') + '"></div>' +
@@ -1877,6 +1960,13 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   }
 
   function acao(nome, el) {
+    if (nome === 'fonte') {
+      const chave = UI.fonteValida(el.dataset.fonte);
+      Store.setConfig({ fonte: chave });
+      UI.aplicarFonte(chave);
+      el.parentNode.querySelectorAll('[data-fonte]').forEach((b) => b.setAttribute('aria-pressed', String(b === el)));
+      return UI.toast('Letra: ' + UI.FONTES[chave].nome);
+    }
     if (nome === 'exportar') {
       const data = Calc.hojeISO().replace(/-/g, '');
       baixar('maison-de-lavande-backup-' + data + '.json', Store.exportarJSON(), 'application/json');
@@ -1924,7 +2014,508 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   root.Views = root.Views || {};
   root.Views.config = { render, depois, acao, mudou, VERSAO_ATUAL };
 })(typeof self !== 'undefined' ? self : this);
+</script>
+<script>
+/*
+ * Relatório de vendas: mês, trimestre ou ano, com gráfico e tabelas.
+ * Sai em PDF, PNG ou JPEG. Tudo é desenhado neste aparelho, sem internet.
+ */
+(function (root) {
+  'use strict';
+  const Calc = root.Calc, Store = root.Store, UI = root.UI;
+  const { esc } = UI;
 
+  // Página A4 em 150 dpi (proporção de A4).
+  const LARG = 1240, ALT = 1754, MARGEM = 80;
+  const COR = {
+    acento: '#7A5FBE', lilas: '#C9B8F0', ink: '#2A2140', muted: '#6E6486',
+    linha: '#E4DCF2', suave: '#F8F5FC', branco: '#FFFFFF', ok: '#2E7D5B',
+  };
+  const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const TRIMESTRES = ['1º', '2º', '3º', '4º'];
+  const ROTULO = { mes: 'Mês', trimestre: 'Trimestre', ano: 'Ano' };
+
+  // Escolha atual da tela de relatório (vale enquanto o app estiver aberto).
+  const estado = { tipo: 'mes', ym: null, canvas: null };
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const num = (n) => (Number(n) || 0).toLocaleString('pt-BR');
+  const pctTxt = (n) => n == null ? '—' : (n > 0 ? '+' : '') + Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+  const pctSimples = (n) => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const mesLongo = (ym) => { const [y, m] = ym.split('-').map(Number); return MESES[m - 1] + ' de ' + y; };
+  const mesCurto = (ym) => Calc.nomeMes(ym).slice(0, 3);
+  const variacao = (antes, depois) => (antes ? ((depois - antes) / Math.abs(antes)) * 100 : null);
+
+  // ---------- períodos ----------
+  // Devolve os meses do relatório e os do período anterior (para a comparação).
+  function periodoDe(tipo, ym) {
+    const [ano, mes] = ym.split('-').map(Number);
+    const hoje = Calc.hojeISO().slice(0, 7);
+    if (tipo === 'trimestre') {
+      const q = Math.floor((mes - 1) / 3);
+      const inicio = ano + '-' + pad(q * 3 + 1);
+      const meses = [0, 1, 2].map((i) => Calc.deslocarMes(inicio, i));
+      const inicioAnt = Calc.deslocarMes(inicio, -3);
+      const anterior = [0, 1, 2].map((i) => Calc.deslocarMes(inicioAnt, i));
+      const qAnt = Math.floor((Number(inicioAnt.slice(5)) - 1) / 3);
+      return {
+        tipo, meses, anterior,
+        titulo: TRIMESTRES[q] + ' trimestre de ' + ano + ' (' + mesCurto(meses[0]).toLowerCase() + ' a ' + mesCurto(meses[2]).toLowerCase() + ')',
+        tituloAnterior: TRIMESTRES[qAnt] + ' trimestre de ' + inicioAnt.slice(0, 4),
+      };
+    }
+    if (tipo === 'ano') {
+      const anoHoje = Number(hoje.slice(0, 4));
+      const meses = [];
+      const fim = ano === anoHoje ? hoje : ano + '-12';
+      for (let cur = ano + '-01'; cur <= fim; cur = Calc.deslocarMes(cur, 1)) meses.push(cur);
+      const anterior = [];
+      for (let i = 1; i <= 12; i++) anterior.push((ano - 1) + '-' + pad(i));
+      const parcial = meses.length < 12 ? ' (até ' + mesLongo(meses[meses.length - 1]) + ')' : '';
+      return { tipo, meses, anterior, titulo: 'Ano de ' + ano + parcial, tituloAnterior: 'Ano de ' + (ano - 1) };
+    }
+    const anterior = Calc.deslocarMes(ym, -1);
+    return { tipo: 'mes', meses: [ym], anterior: [anterior], titulo: cap(mesLongo(ym)), tituloAnterior: cap(mesLongo(anterior)) };
+  }
+
+  // ---------- números ----------
+  function resumo(vendasCalc) {
+    const fat = vendasCalc.reduce((s, v) => s + v.valorTotal, 0);
+    const custo = vendasCalc.reduce((s, v) => s + v.custoTotal, 0);
+    const lucro = fat - custo;
+    const pedidos = vendasCalc.length;
+    const unidades = vendasCalc.reduce((s, v) => s + (Number(v.quantidade) || 0), 0);
+    return {
+      faturamento: r2(fat), custo: r2(custo), lucro: r2(lucro), pedidos, unidades,
+      margem: fat > 0 ? r2((lucro / fat) * 100) : 0,
+      ticket: pedidos ? r2(fat / pedidos) : 0,
+    };
+  }
+
+  function ranking(vendasCalc) {
+    const mapa = {};
+    vendasCalc.forEach((v) => {
+      const k = v.produtoId || v.nomeProduto || '';
+      if (!mapa[k]) mapa[k] = { nome: v.nomeProduto || 'Produto', unidades: 0, faturamento: 0, lucro: 0 };
+      mapa[k].unidades += Number(v.quantidade) || 0;
+      mapa[k].faturamento += v.valorTotal;
+      mapa[k].lucro += v.lucro;
+    });
+    return Object.values(mapa)
+      .sort((a, b) => b.unidades - a.unidades || b.faturamento - a.faturamento)
+      .slice(0, 6)
+      .map((r) => ({ nome: r.nome, unidades: r.unidades, faturamento: r2(r.faturamento), lucro: r2(r.lucro) }));
+  }
+
+  function pagamentos(vendasCalc) {
+    const mapa = {};
+    let total = 0;
+    vendasCalc.forEach((v) => {
+      const f = v.formaPagamento || 'Outro';
+      mapa[f] = (mapa[f] || 0) + v.valorTotal;
+      total += v.valorTotal;
+    });
+    return Object.keys(mapa)
+      .map((f) => ({ forma: f, valor: r2(mapa[f]), percentual: total > 0 ? (mapa[f] / total) * 100 : 0 }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 5);
+  }
+
+  // Barras do gráfico: por dia (mês) ou por mês (trimestre e ano).
+  function serie(tipo, meses, vendasBrutas) {
+    if (tipo === 'mes') {
+      const ym = meses[0];
+      const dias = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate();
+      const porDia = {};
+      vendasBrutas.forEach((v) => {
+        if (Calc.mesDe(v.data) !== ym) return;
+        const c = Calc.calcVenda(v);
+        const x = porDia[v.data] || (porDia[v.data] = { fat: 0, lucro: 0 });
+        x.fat += c.valorTotal;
+        x.lucro += c.lucro;
+      });
+      const barras = [];
+      for (let d = 1; d <= dias; d++) {
+        const x = porDia[ym + '-' + pad(d)] || { fat: 0, lucro: 0 };
+        barras.push({ rotulo: String(d), fat: r2(x.fat), lucro: r2(x.lucro), mostrar: d === 1 || d % 5 === 0 });
+      }
+      return barras;
+    }
+    return meses.map((m) => {
+      const x = Calc.resumoMes(vendasBrutas, m);
+      return { rotulo: mesCurto(m), fat: x.faturamento, lucro: x.lucro, mostrar: true };
+    });
+  }
+
+  // Tudo o que o relatório precisa, sem desenhar nada.
+  function calcular(tipo, ym) {
+    const s = Store.get();
+    const per = periodoDe(tipo, ym);
+    const brutas = s.vendas || [];
+    const noPeriodo = (lista) => brutas.filter((v) => lista.indexOf(Calc.mesDe(v.data)) >= 0).map((v) => Calc.calcVenda(v));
+    const vendasAtual = noPeriodo(per.meses);
+    const atual = resumo(vendasAtual);
+    const anterior = resumo(noPeriodo(per.anterior));
+    const repor = Calc.analiseReposicao(s, Calc.hojeISO())
+      .filter((a) => a.status === 'repor' || a.status === 'esgotado');
+    return {
+      tipo, ym, per, atual,
+      variacao: { faturamento: variacao(anterior.faturamento, atual.faturamento), lucro: variacao(anterior.lucro, atual.lucro) },
+      serie: serie(tipo, per.meses, brutas),
+      top: ranking(vendasAtual),
+      pagamentos: pagamentos(vendasAtual),
+      repor: repor.slice(0, 3),
+      reporTotal: repor.length,
+      nomeLoja: s.configuracoes.nomeLoja || 'Maison de Lavande',
+    };
+  }
+
+  // ---------- desenho ----------
+  function caminhoArredondado(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function cartao(ctx, x, y, w, h) {
+    caminhoArredondado(ctx, x, y, w, h, 22);
+    ctx.fillStyle = COR.branco;
+    ctx.fill();
+    ctx.strokeStyle = COR.linha;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function caixaCor(ctx, x, y, w, h, r, cor) {
+    caminhoArredondado(ctx, x, y, w, h, r);
+    ctx.fillStyle = cor;
+    ctx.fill();
+  }
+
+  // Letra do relatório: a mesma escolhida em Configurações → Letra. Os textos são escritos com os nomes
+  // padrão (Figtree e Cormorant) e trocados aqui pela letra atual.
+  let pilhaRel = UI.pilhaCanvas('padrao');
+  function atualizaPilha() { pilhaRel = UI.pilhaCanvas(Store.get().configuracoes.fonte); }
+  function fonteCanvas(f) {
+    return f.replace('"Cormorant Garamond", Georgia, serif', pilhaRel.titulo).replace('Figtree, sans-serif', pilhaRel.corpo);
+  }
+
+  // Escreve texto; se "largura" for dada, corta com reticências para caber.
+  function texto(ctx, t, x, y, fonte, cor, alinhar, largura) {
+    ctx.font = fonteCanvas(fonte);
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    let s = String(t == null ? '' : t);
+    if (largura && ctx.measureText(s).width > largura) {
+      while (s.length > 1 && ctx.measureText(s + '…').width > largura) s = s.slice(0, -1);
+      s += '…';
+    }
+    ctx.fillStyle = cor;
+    ctx.textAlign = alinhar || 'left';
+    ctx.fillText(s, x, y);
+  }
+
+  function grafico(ctx, x, y, w, h, barras) {
+    const topo = y + 36, base = y + h - 40, alt = base - topo;
+    const max = Math.max(1, ...barras.map((b) => b.fat));
+    ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = COR.linha;
+    ctx.lineWidth = 2;
+    [1, 2, 3].forEach((i) => {
+      const yy = base - (alt * i) / 3;
+      ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    texto(ctx, 'Maior valor: ' + brl(max), x, y + 20, '600 22px Figtree, sans-serif', COR.muted);
+    const grupo = w / barras.length;
+    const bw = Math.min(40, grupo * 0.36);
+    barras.forEach((b, i) => {
+      const cx = x + grupo * i + grupo / 2;
+      const hf = alt * (b.fat / max);
+      const hl = alt * (Math.max(0, b.lucro) / max);
+      if (hf > 0) caixaCor(ctx, cx - bw - 2, base - hf, bw, hf, 6, COR.acento);
+      if (hl > 0) caixaCor(ctx, cx + 2, base - hl, bw, hl, 6, COR.lilas);
+      if (b.mostrar) texto(ctx, b.rotulo, cx, base + 34, '600 22px Figtree, sans-serif', COR.muted, 'center');
+    });
+    ctx.strokeStyle = COR.linha;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x + w, base); ctx.stroke();
+  }
+
+  function desenhar(canvas, d) {
+    atualizaPilha();
+    const ctx = canvas.getContext('2d');
+    const larg = LARG - MARGEM * 2;
+    ctx.fillStyle = COR.suave;
+    ctx.fillRect(0, 0, LARG, ALT);
+
+    // Faixa do topo
+    const grad = ctx.createLinearGradient(0, 0, LARG, 250);
+    grad.addColorStop(0, '#7A5FBE');
+    grad.addColorStop(1, '#A58BE0');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, LARG, 250);
+    texto(ctx, d.nomeLoja, MARGEM, 102, '700 62px "Cormorant Garamond", Georgia, serif', '#FFFFFF', 'left', larg);
+    texto(ctx, 'Relatório de vendas · ' + d.per.titulo, MARGEM, 158, '600 32px Figtree, sans-serif', '#EDE6FB', 'left', larg);
+    texto(ctx, 'Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' neste aparelho', MARGEM, 206, '400 24px Figtree, sans-serif', '#E6DDF8', 'left', larg);
+
+    // Indicadores (2 x 2)
+    const cw = (larg - 24) / 2, ch = 150;
+    const cards = [
+      { rot: 'Faturamento', val: brl(d.atual.faturamento), sub: d.per.tituloAnterior + ': ' + pctTxt(d.variacao.faturamento) },
+      { rot: 'Lucro', val: brl(d.atual.lucro), sub: 'Margem de ' + pctSimples(d.atual.margem) + ' · ' + d.per.tituloAnterior + ': ' + pctTxt(d.variacao.lucro) },
+      { rot: 'Pedidos', val: num(d.atual.pedidos), sub: 'Ticket médio ' + brl(d.atual.ticket) },
+      { rot: 'Unidades vendidas', val: num(d.atual.unidades), sub: 'Custo das vendas ' + brl(d.atual.custo) },
+    ];
+    cards.forEach((c, i) => {
+      const x = MARGEM + (i % 2) * (cw + 24);
+      const y = 286 + Math.floor(i / 2) * (ch + 24);
+      caixaCor(ctx, x, y, cw, ch, 22, COR.branco);
+      texto(ctx, c.rot, x + 28, y + 50, '600 26px Figtree, sans-serif', COR.muted, 'left', cw - 56);
+      texto(ctx, c.val, x + 28, y + 108, '700 52px Figtree, sans-serif', COR.ink, 'left', cw - 56);
+      texto(ctx, c.sub, x + 28, y + 140, '400 22px Figtree, sans-serif', COR.muted, 'left', cw - 56);
+    });
+
+    // Gráfico
+    const gy = 650, gh = 420;
+    cartao(ctx, MARGEM, gy, larg, gh);
+    texto(ctx, d.tipo === 'mes' ? 'Faturamento e lucro por dia' : 'Faturamento e lucro por mês', MARGEM + 30, gy + 52, '700 32px Figtree, sans-serif', COR.ink, 'left', larg - 400);
+    caixaCor(ctx, LARG - MARGEM - 330, gy + 30, 22, 22, 5, COR.acento);
+    texto(ctx, 'Faturamento', LARG - MARGEM - 298, gy + 50, '600 22px Figtree, sans-serif', COR.muted);
+    caixaCor(ctx, LARG - MARGEM - 150, gy + 30, 22, 22, 5, COR.lilas);
+    texto(ctx, 'Lucro', LARG - MARGEM - 118, gy + 50, '600 22px Figtree, sans-serif', COR.muted);
+    if (d.atual.pedidos > 0) {
+      grafico(ctx, MARGEM + 30, gy + 80, larg - 60, 300, d.serie);
+    } else {
+      texto(ctx, 'Sem vendas neste período.', LARG / 2, gy + 230, '600 28px Figtree, sans-serif', COR.muted, 'center');
+    }
+
+    // Mais vendidos (esquerda) e pagamentos + reposição (direita)
+    const y2 = gy + gh + 30;
+    const colW = (larg - 30) / 2;
+    const xE = MARGEM, xD = MARGEM + colW + 30;
+    const rowH = 40;
+    const cabeca = (x, y, titulo) => texto(ctx, titulo, x + 28, y + 50, '700 28px Figtree, sans-serif', COR.ink, 'left', colW - 56);
+
+    const altE = 120 + Math.max(1, d.top.length) * rowH;
+    cartao(ctx, xE, y2, colW, altE);
+    cabeca(xE, y2, 'Mais vendidos');
+    const hy = y2 + 92;
+    texto(ctx, 'Produto', xE + 28, hy, '600 20px Figtree, sans-serif', COR.muted);
+    texto(ctx, 'Un.', xE + colW - 230, hy, '600 20px Figtree, sans-serif', COR.muted, 'right');
+    texto(ctx, 'Faturamento', xE + colW - 28, hy, '600 20px Figtree, sans-serif', COR.muted, 'right');
+    if (!d.top.length) texto(ctx, 'Nenhuma venda neste período.', xE + 28, hy + 46, '400 22px Figtree, sans-serif', COR.muted);
+    d.top.forEach((t, i) => {
+      const ry = hy + 30 + i * rowH + 20;
+      texto(ctx, t.nome, xE + 28, ry, '400 22px Figtree, sans-serif', COR.ink, 'left', 230);
+      texto(ctx, num(t.unidades), xE + colW - 230, ry, '400 22px Figtree, sans-serif', COR.ink, 'right');
+      texto(ctx, brl(t.faturamento), xE + colW - 28, ry, '400 22px Figtree, sans-serif', COR.ink, 'right');
+    });
+
+    const altD = 120 + Math.max(1, d.pagamentos.length) * rowH;
+    cartao(ctx, xD, y2, colW, altD);
+    cabeca(xD, y2, 'Formas de pagamento');
+    texto(ctx, 'Forma', xD + 28, hy, '600 20px Figtree, sans-serif', COR.muted);
+    texto(ctx, 'Valor', xD + colW - 130, hy, '600 20px Figtree, sans-serif', COR.muted, 'right');
+    texto(ctx, '%', xD + colW - 28, hy, '600 20px Figtree, sans-serif', COR.muted, 'right');
+    if (!d.pagamentos.length) texto(ctx, 'Sem vendas neste período.', xD + 28, hy + 46, '400 22px Figtree, sans-serif', COR.muted);
+    d.pagamentos.forEach((p, i) => {
+      const ry = hy + 30 + i * rowH + 20;
+      texto(ctx, p.forma, xD + 28, ry, '400 22px Figtree, sans-serif', COR.ink, 'left', 200);
+      texto(ctx, brl(p.valor), xD + colW - 130, ry, '400 22px Figtree, sans-serif', COR.ink, 'right');
+      texto(ctx, pctSimples(p.percentual), xD + colW - 28, ry, '400 22px Figtree, sans-serif', COR.ink, 'right');
+    });
+
+    const y3 = y2 + altD + 24;
+    const linhasRepor = Math.max(1, d.repor.length) + (d.reporTotal > d.repor.length ? 1 : 0);
+    // Cada item ocupa duas linhas: nome em cima e a situação do estoque embaixo, para nada encostar.
+    const rowR = 66;
+    const altR = 120 + linhasRepor * rowR;
+    cartao(ctx, xD, y3, colW, altR);
+    cabeca(xD, y3, 'Para repor agora');
+    if (!d.repor.length) {
+      texto(ctx, 'Nenhum produto abaixo do mínimo.', xD + 28, y3 + 100, '400 22px Figtree, sans-serif', COR.muted);
+    } else {
+      d.repor.forEach((a, i) => {
+        const ry = y3 + 112 + i * rowR;
+        texto(ctx, a.nome, xD + 28, ry, '400 22px Figtree, sans-serif', COR.ink, 'left', colW - 56);
+        texto(ctx, (a.estoque <= 0 ? 'sem estoque' : num(a.estoque) + ' un em estoque') + ' · comprar ' + num(a.sugestaoCompra), xD + 28, ry + 30, '400 19px Figtree, sans-serif', COR.muted, 'left', colW - 56);
+      });
+      if (d.reporTotal > d.repor.length) {
+        texto(ctx, 'e mais ' + (d.reporTotal - d.repor.length) + ' produto(s) na tela Estoque', xD + 28, y3 + 112 + d.repor.length * rowR, '400 20px Figtree, sans-serif', COR.muted, 'left', colW - 56);
+      }
+    }
+
+    texto(ctx, 'Lucro = valor de venda − custo registrado em cada venda. Números calculados neste aparelho.', LARG / 2, ALT - 70, '400 20px Figtree, sans-serif', COR.muted, 'center', larg);
+  }
+
+  async function carregarFontes() {
+    if (!document.fonts || !document.fonts.load) return;
+    atualizaPilha();
+    const lista = ['700 62px "Cormorant Garamond", Georgia, serif', '600 26px Figtree, sans-serif', '400 22px Figtree, sans-serif', '700 52px Figtree, sans-serif'].map(fonteCanvas);
+    const espera = new Promise((ok) => setTimeout(ok, 2500));
+    await Promise.race([Promise.all(lista.map((f) => document.fonts.load(f).catch(() => null))), espera]);
+  }
+
+  // ---------- PDF (uma página A4 com a imagem do relatório) ----------
+  function blobDe(canvas, tipo, qualidade) {
+    return new Promise((ok) => canvas.toBlob(ok, tipo, qualidade));
+  }
+
+  async function pdfDe(canvas) {
+    const jpeg = new Uint8Array(await (await blobDe(canvas, 'image/jpeg', 0.92)).arrayBuffer());
+    const enc = new TextEncoder();
+    const partes = [];
+    const deslocamentos = [];
+    let pos = 0;
+    const colocar = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; partes.push(b); pos += b.length; };
+    const objeto = (n, corpo) => { deslocamentos[n] = pos; colocar(n + ' 0 obj\n' + corpo + '\nendobj\n'); };
+    const PW = 595.28, PH = 841.89;
+    colocar('%PDF-1.4\n');
+    objeto(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    objeto(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    objeto(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PW + ' ' + PH + '] /Resources << /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>');
+    const conteudo = 'q ' + PW + ' 0 0 ' + PH + ' 0 0 cm /Im1 Do Q';
+    objeto(4, '<< /Length ' + conteudo.length + ' >>\nstream\n' + conteudo + '\nendstream');
+    deslocamentos[5] = pos;
+    colocar('5 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + canvas.width + ' /Height ' + canvas.height +
+      ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n');
+    colocar(jpeg);
+    colocar('\nendstream\nendobj\n');
+    const inicioXref = pos;
+    let tabela = 'xref\n0 6\n0000000000 65535 f \n';
+    for (let n = 1; n <= 5; n++) tabela += String(deslocamentos[n]).padStart(10, '0') + ' 00000 n \n';
+    colocar(tabela);
+    colocar('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + inicioXref + '\n%%EOF\n');
+    return new Blob(partes, { type: 'application/pdf' });
+  }
+
+  function baixar(blob, nome) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+
+  // ---------- tela (folha) ----------
+  function opcoesMeses(selecionado) {
+    const hoje = Calc.mesDe(Calc.hojeISO());
+    let html = '';
+    for (let i = 0; i < 24; i++) {
+      const m = Calc.deslocarMes(hoje, -i);
+      html += '<option value="' + m + '"' + (m === selecionado ? ' selected' : '') + '>' + esc(cap(mesLongo(m))) + '</option>';
+    }
+    return html;
+  }
+
+  function folhaHtml() {
+    return '<div class="field full"><label>O que gerar</label>' +
+      '<div class="seg" role="group" aria-label="Tipo de relatório">' +
+        ['mes', 'trimestre', 'ano'].map((t) =>
+          '<button type="button" data-act="relatorio.tipo" data-tipo="' + t + '" aria-pressed="' + (estado.tipo === t) + '">' + ROTULO[t] + '</button>'
+        ).join('') +
+      '</div></div>' +
+      '<div class="field full"><label for="rel-mes">Mês de referência</label>' +
+        '<select id="rel-mes" data-act-change="relatorio.mes">' + opcoesMeses(estado.ym) + '</select>' +
+        '<span class="muted small">Trimestre e ano usam o mês escolhido para saber qual período gerar.</span></div>' +
+      '<div class="form-actions"><button type="button" class="btn btn-primary btn-block" data-act="relatorio.ver">Ver relatório</button></div>' +
+      '<div id="rel-previa" class="rel-previa"></div>' +
+      '<div id="rel-baixar" class="form-actions rel-baixar" hidden>' +
+        '<button type="button" class="btn btn-block" data-act="relatorio.baixar" data-formato="pdf">Baixar PDF</button>' +
+        '<button type="button" class="btn btn-block" data-act="relatorio.baixar" data-formato="png">Baixar PNG</button>' +
+        '<button type="button" class="btn btn-block" data-act="relatorio.baixar" data-formato="jpeg">Baixar JPEG</button>' +
+      '</div>';
+  }
+
+  function abrir() {
+    UI.abrirFolha('Relatório de vendas', folhaHtml(), null);
+  }
+
+  async function ver() {
+    const previa = document.getElementById('rel-previa');
+    const botoes = document.getElementById('rel-baixar');
+    if (!previa) return;
+    botoes.hidden = true;
+    previa.innerHTML = '<p class="muted small">Montando o relatório…</p>';
+    await carregarFontes();
+    const d = calcular(estado.tipo, estado.ym);
+    const canvas = document.createElement('canvas');
+    canvas.width = LARG;
+    canvas.height = ALT;
+    desenhar(canvas, d);
+    estado.canvas = canvas;
+    previa.innerHTML = '';
+    canvas.className = 'rel-canvas';
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', 'Prévia do relatório: ' + d.per.titulo);
+    previa.appendChild(canvas);
+    botoes.hidden = false;
+  }
+
+  async function baixarFormato(formato) {
+    if (!estado.canvas) return;
+    const base = 'relatorio-maison-' + estado.tipo + '-' + estado.ym;
+    let blob;
+    if (formato === 'pdf') blob = await pdfDe(estado.canvas);
+    else if (formato === 'png') blob = await blobDe(estado.canvas, 'image/png');
+    else blob = await blobDe(estado.canvas, 'image/jpeg', 0.92);
+    const ext = formato === 'jpeg' ? 'jpg' : formato;
+    baixar(blob, base + '.' + ext);
+    UI.toast('Relatório salvo como ' + ext.toUpperCase() + '.');
+  }
+
+  // Cartão do painel: sempre aparece; no começo do mês, lembra do mês que acabou.
+  function card() {
+    const s = Store.get();
+    const hoje = Calc.hojeISO();
+    const dia = Number(hoje.slice(8, 10));
+    const anterior = Calc.deslocarMes(Calc.mesDe(hoje), -1);
+    const lembrete = dia <= 7 && Calc.resumoMes(s.vendas || [], anterior).pedidos > 0;
+    return (lembrete
+      ? '<div class="card rel-lembrete"><div class="card-title"><h3>Relatório de ' + esc(mesLongo(anterior)) + ' já pode sair</h3></div>' +
+        '<p class="muted small" style="margin:0 0 12px">Gere o resumo de vendas e valores do mês que acabou.</p>' +
+        '<button type="button" class="btn btn-primary btn-block" data-act="relatorio.abrir" data-mes="' + anterior + '">Gerar relatório do mês</button></div>'
+      : '') +
+      '<div class="card"><div class="card-title"><h3>Relatório</h3><span class="muted small">PDF, PNG ou JPEG</span></div>' +
+      '<p class="muted small" style="margin:0 0 12px">Vendas, lucro, gráfico, mais vendidos e pagamentos, do mês, do trimestre ou do ano.</p>' +
+      '<button type="button" class="btn btn-block" data-act="relatorio.abrir">Gerar relatório</button></div>';
+  }
+
+  function acao(nome, el) {
+    if (nome === 'abrir') {
+      estado.ym = (el && el.dataset.mes) || estado.ym || UI.state.mes || Calc.mesDe(Calc.hojeISO());
+      estado.canvas = null;
+      return abrir();
+    }
+    if (nome === 'tipo') {
+      estado.tipo = el.dataset.tipo;
+      estado.canvas = null;
+      return abrir();
+    }
+    if (nome === 'ver') return ver();
+    if (nome === 'baixar') return baixarFormato(el.dataset.formato);
+  }
+
+  function mudou(nome, el) {
+    if (nome === 'mes') {
+      estado.ym = el.value;
+      estado.canvas = null;
+      abrir();
+    }
+  }
+
+  root.Views = root.Views || {};
+  root.Views.relatorio = { acao, mudou, card, calcular, periodoDe };
+})(typeof self !== 'undefined' ? self : this);
 </script>
 <script>
 /*
@@ -2017,6 +2608,7 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
 
   function init() {
     Store.carregar();
+    UI.aplicarFonte(Store.get().configuracoes.fonte);
     UI.state.mes = Calc.mesDe(Calc.hojeISO());
     UI.state.tela = 'painel';
     // Atalhos vindos de fora (ex.: a tela Hoje do menu): maison.html#estoque, #vendas, #compras...
@@ -2057,7 +2649,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
 
   document.addEventListener('DOMContentLoaded', init);
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 </body>
 </html>

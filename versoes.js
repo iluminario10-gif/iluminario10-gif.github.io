@@ -6,8 +6,11 @@ window.MEUS_APPS_VERSOES = {
   hub: {
     nome: 'Meus apps',
     icone: 'hub-icon-192.png',
-    atual: '1.4',
+    atual: '1.5',
     historico: [
+      { versao: '1.5', itens: [
+        'Ícone do Meus apps volta a ser o gatinho na tela inicial. O nome continua Meus apps.',
+      ] },
       { versao: '1.4', itens: [
         'Cópia de segurança geral: um botão guarda os dados dos quatro apps num arquivo, e outro restaura.',
       ] },
@@ -52,8 +55,13 @@ window.MEUS_APPS_VERSOES = {
   maison: {
     nome: 'Maison de Lavande',
     icone: 'maison-icon-192.png',
-    atual: '1.3',
+    atual: '1.4',
     historico: [
+      { versao: '1.4', itens: [
+        'Relatório de vendas do mês, do trimestre ou do ano, com gráfico e tabelas. Sai em PDF, PNG ou JPEG.',
+        'No começo do mês, o Painel lembra de gerar o relatório do mês que acabou.',
+        'Escolha da letra em Configurações: Mais legível, Lexend, Nunito ou a do celular. Vale para o app e para o relatório.',
+      ] },
       { versao: '1.3', itens: [
         'Tocar em um item do Hoje (menu) abre direto a tela certa: estoque, vendas ou compras.',
       ] },
