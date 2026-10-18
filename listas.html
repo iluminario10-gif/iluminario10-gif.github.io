@@ -493,7 +493,17 @@ button:disabled { opacity: .35; cursor: default; }
       <span class="gr" aria-hidden="true">A</span>
     </div>
   </div>
-  <p id="listas-versao" style="text-align:center;opacity:.7;font-size:13px;margin:18px 0 6px">Listas · versão 1.1</p>
+  <div class="campo">
+    <h3>Cópia de segurança</h3>
+    <p style="margin:0 0 10px;opacity:.8;font-size:14px">Guarda as listas num arquivo. Use antes de trocar o ícone ou o aparelho.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn" id="btn-salvar-copia">Salvar cópia</button>
+      <button type="button" class="btn sec" id="btn-restaurar-copia">Restaurar cópia</button>
+    </div>
+    <input type="file" id="arquivo-copia" accept="application/json,.json" hidden>
+    <p id="copia-msg" role="status" style="margin:10px 0 0;font-size:14px"></p>
+  </div>
+  <p id="listas-versao" style="text-align:center;opacity:.7;font-size:13px;margin:18px 0 6px">Listas · versão 1.2</p>
 </section>
 
 <section class="folha" id="folha-nova-lista" role="dialog" aria-modal="true" aria-labelledby="t-nova" tabindex="-1" hidden>
@@ -1809,6 +1819,61 @@ ICONES_LISTA.casa = [
     if (e.key !== 'Escape') return;
     if (!$('veu').hidden) fecharTudo();
     else $('sugestoes').hidden = true;
+  });
+
+  // ---------- Cópia de segurança ----------
+  // Guarda o que está gravado no aparelho (texto puro), para restaurar exatamente como estava.
+  const CHAVES_COPIA_LISTAS = [KEY, KEY_ANTIGA];
+  function msgCopia(texto, erro) {
+    const el = $('copia-msg');
+    el.textContent = texto;
+    el.style.color = erro ? 'var(--danger)' : '';
+  }
+  $('btn-salvar-copia').addEventListener('click', () => {
+    const dados = {};
+    CHAVES_COPIA_LISTAS.forEach(k => { try { dados[k] = localStorage.getItem(k); } catch (_) { dados[k] = null; } });
+    const agora = new Date();
+    const dia = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
+    const blob = new Blob([JSON.stringify({ app: 'listas', versao_app: '1.2', formato: 1, data: dia, dados }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'listas-' + dia + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    msgCopia('Cópia salva. Guarde o arquivo em um lugar seguro.');
+  });
+  $('btn-restaurar-copia').addEventListener('click', () => $('arquivo-copia').click());
+  $('arquivo-copia').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      let obj = null;
+      try { obj = JSON.parse(leitor.result); } catch (_) { obj = null; }
+      if (!obj || obj.app !== 'listas' || !obj.dados || typeof obj.dados !== 'object') {
+        return msgCopia('Esse arquivo não é uma cópia das Listas. Nada foi alterado.', true);
+      }
+      // Confere tudo antes de gravar: se algo estiver errado, nada muda.
+      for (const k of CHAVES_COPIA_LISTAS) {
+        const v = obj.dados[k];
+        if (typeof v === 'string') {
+          try { JSON.parse(v); } catch (_) { return msgCopia('A cópia está danificada. Nada foi alterado.', true); }
+        }
+      }
+      const atual = obj.dados[KEY];
+      if (typeof atual !== 'string' || !Array.isArray((JSON.parse(atual) || {}).listas)) {
+        return msgCopia('A cópia não tem listas. Nada foi alterado.', true);
+      }
+      if (!confirm('Restaurar a cópia substitui as listas deste aparelho. Continuar?')) return;
+      CHAVES_COPIA_LISTAS.forEach(k => {
+        const v = obj.dados[k];
+        try { if (typeof v === 'string') localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (_) {}
+      });
+      msgCopia('Cópia restaurada. Atualizando…');
+      setTimeout(() => location.reload(), 500);
+    };
+    leitor.readAsText(f);
   });
 
   // ---------- Início ----------

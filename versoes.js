@@ -6,8 +6,11 @@ window.MEUS_APPS_VERSOES = {
   hub: {
     nome: 'Meus apps',
     icone: 'hub-icon-192.png',
-    atual: '1.3',
+    atual: '1.4',
     historico: [
+      { versao: '1.4', itens: [
+        'Cópia de segurança geral: um botão guarda os dados dos quatro apps num arquivo, e outro restaura.',
+      ] },
       { versao: '1.3', itens: [
         'Tela Novidades: histórico de cada app, com a versão atual e o que mudou. Arraste para o lado para trocar de app.',
         'A versão de cada app aparece ao lado do nome, e a versão do Meus apps aparece no rodapé.',
@@ -67,8 +70,11 @@ window.MEUS_APPS_VERSOES = {
   listas: {
     nome: 'Listas',
     icone: 'listas-icon-192.png',
-    atual: '1.1',
+    atual: '1.2',
     historico: [
+      { versao: '1.2', itens: [
+        'Cópia de segurança nos Ajustes: salvar e restaurar as listas num arquivo.',
+      ] },
       { versao: '1.1', itens: [
         'Comprados antes: atalhos com os produtos que você mais compra, para adicionar com um toque.',
         'Desfazer: ao remover um item ou esvaziar a lista, dá para voltar atrás por alguns segundos.',

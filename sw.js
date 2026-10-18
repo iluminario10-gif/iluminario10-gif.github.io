@@ -1,6 +1,6 @@
 // Meus apps — service worker único do endereço.
 // Cobre o menu, o Patinhas, a Maison e a Listas. Ao mudar arquivos, aumente VERSAO.
-const VERSAO = 'meus-apps-v4';
+const VERSAO = 'meus-apps-v5';
 const ARQUIVOS = [
   './', './index.html', './patinhas.html', './maison.html', './listas.html', './hoje.html', './novidades.html',
   './versoes.js', './manifest.webmanifest',

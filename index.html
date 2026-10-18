@@ -46,6 +46,13 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
 .versao-hub{color:var(--muted);font-size:13.5px;text-align:center;margin:20px 0 0;line-height:1.5}
 .versao-hub strong{color:var(--ink)}
 .versao-hub a{color:var(--accent);font-weight:700;text-decoration:none}
+.copia-geral{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
+.copia-geral h2{font-size:16px;margin:0 0 6px}
+.copia-geral p{color:var(--muted);font-size:13.5px;line-height:1.45;margin:0}
+.botoes-copia{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn-copia{flex:1 1 140px;padding:12px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;font-size:14.5px;font-weight:700;cursor:pointer}
+.btn-copia.sec{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.copia-msg{margin:10px 0 0;font-size:13.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -103,6 +110,17 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
   <button class="instalar" id="instalar" hidden>Instalar Meus apps neste aparelho</button>
 
   <a class="ver-hoje" href="hoje.html">Ver tudo de hoje ›</a>
+
+  <section class="copia-geral" aria-labelledby="t-copia">
+    <h2 id="t-copia">Cópia de segurança</h2>
+    <p>Guarda os dados dos quatro apps (gatos, loja, listas) em um só arquivo. Faça antes de trocar o ícone ou o aparelho.</p>
+    <div class="botoes-copia">
+      <button type="button" class="btn-copia" id="salvar-tudo">Salvar cópia de tudo</button>
+      <button type="button" class="btn-copia sec" id="restaurar-tudo">Restaurar cópia</button>
+    </div>
+    <input type="file" id="arquivo-tudo" accept="application/json,.json" hidden>
+    <p class="copia-msg" id="copia-tudo-msg" role="status"></p>
+  </section>
 
   <p class="versao-hub">Meus apps · <strong>versão <span id="hub-versao"></span></strong> · <a href="novidades.html">Novidades e histórico ›</a></p>
 
@@ -192,6 +210,59 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     });
     try { mostrarPendencias(); } catch (e) { /* a faixa de pendências é opcional */ }
   }
+
+  // ---------- Cópia de segurança geral ----------
+  // Junta o que cada app guarda no aparelho em um arquivo só (texto puro, para restaurar exatamente como estava).
+  const CHAVES_COPIA = ['patinhas-em-dia-v1', 'patinhas-cal-tudo', 'mdl.dados', 'lista-mercado.v2', 'lista-mercado.v1'];
+  function msgCopia(texto, erro) {
+    const el = document.getElementById('copia-tudo-msg');
+    el.textContent = texto;
+    el.style.color = erro ? 'var(--bad, #C0392B)' : '';
+  }
+  document.getElementById('salvar-tudo').addEventListener('click', function () {
+    const dados = {};
+    CHAVES_COPIA.forEach(function (k) { try { dados[k] = localStorage.getItem(k); } catch (e) { dados[k] = null; } });
+    const dia = hojeISO();
+    const V = window.MEUS_APPS_VERSOES || {};
+    const blob = new Blob([JSON.stringify({ app: 'meus-apps', versao_app: V.hub ? V.hub.atual : '', formato: 1, data: dia, dados: dados }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'meus-apps-' + dia + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    msgCopia('Cópia salva. Guarde o arquivo em um lugar seguro.');
+  });
+  document.getElementById('restaurar-tudo').addEventListener('click', function () {
+    document.getElementById('arquivo-tudo').click();
+  });
+  document.getElementById('arquivo-tudo').addEventListener('change', function (e) {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const leitor = new FileReader();
+    leitor.onload = function () {
+      let obj = null;
+      try { obj = JSON.parse(leitor.result); } catch (err) { obj = null; }
+      if (!obj || obj.app !== 'meus-apps' || !obj.dados || typeof obj.dados !== 'object') {
+        return msgCopia('Esse arquivo não é uma cópia do Meus apps. Nada foi alterado.', true);
+      }
+      // Confere tudo antes de gravar: se algo estiver errado, nada muda.
+      for (const k of CHAVES_COPIA) {
+        const v = obj.dados[k];
+        if (typeof v === 'string') {
+          try { JSON.parse(v); } catch (err) { return msgCopia('A cópia está danificada. Nada foi alterado.', true); }
+        }
+      }
+      if (!confirm('Restaurar a cópia substitui os dados atuais deste aparelho pelos da cópia. Continuar?')) return;
+      CHAVES_COPIA.forEach(function (k) {
+        const v = obj.dados[k];
+        try { if (typeof v === 'string') localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (err) {}
+      });
+      msgCopia('Cópia restaurada. Os dados já estão de volta nos apps.');
+      atualizarResumos();
+    };
+    leitor.readAsText(f);
+  });
 
   // Versões: o número de cada app aparece ao lado do nome, e a do Meus apps no rodapé (vem de versoes.js).
   function mostrarVersoes() {
