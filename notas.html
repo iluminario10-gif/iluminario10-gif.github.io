@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Sem conexão com a internet: o app não consegue enviar nada para fora do aparelho. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#0F766E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Notas em Dia">
+<meta name="description" content="Controle de emissão de notas fiscais dos pacientes.">
+<link rel="manifest" href="notas.webmanifest">
+<link rel="icon" href="notas-icon-192.png">
+<link rel="apple-touch-icon" href="notas-icon-180.png">
+<title>Notas em Dia</title>
+<style>
+:root{
+  --bg:#F4F7F6; --card:#FFFFFF; --ink:#1B2B2A; --muted:#55706C; --line:#D5E2E0;
+  --pri:#0F766E; --pri-ink:#FFFFFF; --pri-soft:#D9F1EE;
+  --ok:#14532D; --ok-soft:#DCFCE7; --warn:#7C3F06; --warn-soft:#FEF0C7;
+  --danger:#B42318; --danger-soft:#FDE4E1;
+  --sombra:0 1px 2px rgba(20,40,38,.06),0 6px 18px rgba(20,40,38,.07);
+  --r:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0F1A19; --card:#162322; --ink:#E6F2F0; --muted:#A9C2BE; --line:#2A3F3D;
+    --pri:#2DD4BF; --pri-ink:#042F2B; --pri-soft:#17413C;
+    --ok:#BBF7D0; --ok-soft:#14331F; --warn:#FDE68A; --warn-soft:#3A2E10;
+    --danger:#FCA5A5; --danger-soft:#3B1717;
+    --sombra:none;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:17px;line-height:1.45;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}
+h1,h2,h3{margin:0;line-height:1.25}
+h1{font-size:24px}
+h2{font-size:20px}
+h3{font-size:19px}
+p{margin:0 0 10px}
+.sub{color:var(--muted);font-size:15px}
+.centro{text-align:center}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.sr-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+[hidden]{display:none!important}
+
+/* ---------- barra superior e abas ---------- */
+.topo{position:sticky;top:0;z-index:5;background:var(--pri);color:var(--pri-ink);display:flex;align-items:center;justify-content:space-between;padding:12px 16px;min-height:58px}
+.topo h1{font-size:20px}
+.btn-topo{background:rgba(255,255,255,.18);color:inherit;border:0;border-radius:10px;min-height:44px;padding:0 12px;font:inherit;font-weight:700;cursor:pointer}
+.conteudo{max-width:560px;margin:0 auto;padding:16px 16px 110px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tab{background:none;border:0;min-height:60px;font:inherit;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer}
+.tab.on{color:var(--pri);box-shadow:inset 0 3px 0 var(--pri)}
+
+/* ---------- cartões e textos ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sombra);margin-bottom:12px}
+.secao{margin:22px 0 10px}
+.resumo{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:6px}
+.linha{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.linha h3{overflow-wrap:anywhere}
+.chip{display:inline-block;font-size:14px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.chip.pode{background:var(--ok-soft);color:var(--ok)}
+.chip.aguarda{background:var(--warn-soft);color:var(--warn)}
+.status{font-weight:700;margin:6px 0 2px}
+.status.ok{color:var(--ok)}
+.status.warn{color:var(--warn)}
+.vazio,.vazio-txt{color:var(--muted)}
+.vazio-txt{padding:8px 2px}
+.aviso{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:15px}
+.erro{color:var(--danger);font-weight:700;background:var(--danger-soft);padding:10px 12px;border-radius:12px}
+.rodape{color:var(--muted);font-size:14px;text-align:center;margin:28px 0 0}
+
+/* ---------- botões ---------- */
+button{font-family:inherit}
+.btn-pri,.btn-sec,.btn-perigo{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border-radius:12px;border:0;font:inherit;font-weight:700;cursor:pointer;text-align:center}
+.btn-pri{background:var(--pri);color:var(--pri-ink)}
+.btn-sec{background:var(--pri-soft);color:var(--pri)}
+.btn-perigo{background:var(--danger-soft);color:var(--danger)}
+.btn-txt{background:none;border:0;color:var(--pri);font:inherit;font-weight:700;min-height:44px;padding:0 8px;cursor:pointer}
+.btn-txt.perigo{color:var(--danger)}
+.bloco{display:flex;width:100%;margin-top:8px}
+.bloco:first-child{margin-top:0}
+.acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.acoes>*{flex:1 1 auto}
+.acoes-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.acoes-grade>*{width:100%}
+.acoes-lista{display:flex;flex-direction:column;gap:10px}
+.link-nome{background:none;border:0;padding:0;font:inherit;font-size:19px;font-weight:700;color:var(--ink);text-align:left;cursor:pointer}
+.btn-topo:focus-visible,.btn-pri:focus-visible,.btn-sec:focus-visible,.btn-txt:focus-visible,.btn-perigo:focus-visible,.card[data-act]:focus-visible,.tab:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+
+/* ---------- busca e listas ---------- */
+.topo-lista{align-items:center;margin-bottom:12px}
+.busca{display:block;margin-bottom:12px}
+input,select,textarea{width:100%;min-height:48px;font:inherit;font-size:17px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+input[type=date]{min-height:48px}
+button.item{display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;margin-bottom:10px}
+.item .nome{font-size:19px;font-weight:700}
+.item .status{margin:4px 0 0}
+.lista-planos{list-style:none;padding:0;margin:0 0 10px}
+.lista-planos li{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+.acoes-pequenas{display:flex;gap:4px;flex-shrink:0}
+
+/* ---------- ficha do paciente ---------- */
+.ficha{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;margin:12px 0 0}
+.ficha dt{color:var(--muted);font-size:15px}
+.ficha dd{margin:0;font-weight:700;overflow-wrap:anywhere}
+.nome-grande{font-size:24px;margin-bottom:8px;overflow-wrap:anywhere}
+.hist{list-style:none;padding:0;margin:0 0 14px}
+.hist li{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.texto-desc{background:var(--bg);border:1px dashed var(--line);border-radius:12px;padding:12px;white-space:pre-wrap;font-size:16px;margin:10px 0 12px}
+
+/* ---------- folhas (formulários) ---------- */
+.folha-fundo{position:fixed;inset:0;z-index:20;background:rgba(8,18,17,.5);display:flex;align-items:flex-end;justify-content:center}
+.folha{background:var(--bg);width:100%;max-width:560px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.folha-topo{position:sticky;top:0;z-index:2;background:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.folha-topo h2{font-size:19px}
+.btn-icone{background:none;border:0;font-size:22px;min-width:44px;min-height:44px;color:var(--ink);cursor:pointer}
+.folha-corpo{padding:16px 16px 28px}
+.form label{display:block;font-weight:700;margin-bottom:14px}
+.form label .ajuda{display:block;font-weight:400;color:var(--muted);font-size:14px;margin-top:2px}
+.form input[readonly]{background:var(--bg);color:var(--muted)}
+.opcoes{border:0;padding:0;margin:0 0 14px}
+.opcoes legend{font-weight:700;margin-bottom:8px;padding:0}
+.form .op{display:flex;align-items:center;gap:10px;font-weight:400;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 12px;min-height:50px;margin:0 0 8px;cursor:pointer}
+.form .op input{flex:0 0 22px;width:22px;height:22px;min-height:0;margin:0;padding:0;border:0;background:none;accent-color:var(--pri)}
+
+/* ---------- entrada (criar senha / entrar) ---------- */
+.entrada{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:16px}
+.entrada .card{max-width:440px;width:100%}
+.entrada h1{margin-bottom:10px;color:var(--pri)}
+.entrada .form{margin-top:6px}
+.entrada .btn-sec{margin-top:10px}
+
+/* ---------- aviso de copiado ---------- */
+#toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);z-index:30;background:#0B2B28;color:#fff;padding:12px 16px;border-radius:14px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+'use strict';
+
+/* ==========================================================
+   Notas em Dia — controle de emissão de notas fiscais.
+   Os dados ficam criptografados (AES-GCM) no aparelho.
+   A chave sai da senha do usuário (PBKDF2-SHA256).
+   ========================================================== */
+
+const VERSAO = '1.0';
+const CHAVE_COFRE = 'notas-em-dia.cofre';
+const ITER = 600000;
+const MIN_SENHA = 6;
+const INATIVIDADE_MS = 10 * 60 * 1000;   // bloqueia após 10 min sem uso
+const OCULTO_MS = 2 * 60 * 1000;         // bloqueia se o app ficar 2 min em segundo plano
+const LIMPA_CPF_MS = 60 * 1000;          // apaga o CPF copiado da área de transferência
+
+const PLANOS_INICIAIS = [
+  { nome: 'SulAmérica', intervalo: 15 },
+  { nome: 'Outros planos', intervalo: 30 }
+];
+const TIPOS = { consulta: 'Consulta médica', acupuntura: 'Acupuntura' };
+const DESCRICOES = {
+  consulta: 'Uma consulta médica na especialidade de clínica geral realizada pela Dra. Roseane M. Debatin portadora do CRM 52.51762-9 e CPF 806.807.477-53. Consulta paga em dinheiro.',
+  acupuntura: 'Dez sessões de acupuntura com o Dr. Fernando Antônio Correa Fernandes portador do CPF 00023630701. CREFITO 59444F.'
+};
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+let estado = null;        // dados abertos; só existem com o app desbloqueado
+let chave = null;         // CryptoKey em memória
+let salt = null;          // sal do cofre (base64)
+let iter = ITER;
+let tela = { nome: 'emitir' };
+let busca = '';
+let folha = null;
+let fila = Promise.resolve();
+let importacao = null;
+let ocupado = false;
+let timerInat = null, timerOculto = null, timerToast = null, timerLimpa = null;
+let cpfCopiado = null;
+
+/* ---------- utilidades ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function b64(bytes){
+  let s = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(s);
+}
+function unb64(s){ return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+
+function hojeISO(){ const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function toISO(d){ return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function parseISO(s){ const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function addDias(iso, n){ const d = parseISO(iso); d.setDate(d.getDate() + n); return toISO(d); }
+function diasEntre(a, b){ return Math.round((parseISO(b) - parseISO(a)) / 86400000); }
+function dataBR(iso){ if (!iso) return '—'; const [y, m, d] = iso.split('-'); return d + '/' + m + '/' + y; }
+
+function formatCpf(d){
+  d = String(d || '');
+  return d.length === 11 ? d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9) : d;
+}
+function mascaraCpf(v){
+  const d = String(v).replace(/\D/g, '').slice(0, 11);
+  let out = d.slice(0, 3);
+  if (d.length > 3) out += '.' + d.slice(3, 6);
+  if (d.length > 6) out += '.' + d.slice(6, 9);
+  if (d.length > 9) out += '-' + d.slice(9, 11);
+  return out;
+}
+function cpfValido(d){
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  const digs = d.split('').map(Number);
+  const dv = n => {
+    let soma = 0;
+    for (let i = 0; i < n; i++) soma += digs[i] * (n + 1 - i);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return dv(9) === digs[9] && dv(10) === digs[10];
+}
+function nomeValido(n){ return n.split(' ').filter(Boolean).length >= 2; }
+function parseValor(s){
+  let t = String(s || '').trim().replace(/\s/g, '');
+  if (!t) return NaN;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return NaN;
+  return Math.round(Number(t) * 100) / 100;
+}
+function numeroBR(n){ return Number(n).toFixed(2).replace('.', ','); }
+function reais(n){ return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function csvCampo(v){
+  const s = String(v == null ? '' : v);
+  return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+/* ---------- modelo ---------- */
+function ultimaNota(p){
+  return p.emissoes.reduce((m, e) => (e.data > m ? e.data : m), '');
+}
+function situacao(p, hoje){
+  hoje = hoje || hojeISO();
+  const ult = ultimaNota(p);
+  if (!ult) return { pode: true, proxima: null, falta: 0, texto: 'Primeira nota: pode emitir' };
+  const proxima = addDias(ult, Number(p.intervalo));
+  const falta = diasEntre(hoje, proxima);
+  if (falta <= 0) {
+    return { pode: true, proxima, falta, texto: falta === 0 ? 'Pode emitir hoje' : 'Pode emitir desde ' + dataBR(proxima) };
+  }
+  return { pode: false, proxima, falta, texto: 'Aguardar até ' + dataBR(proxima) + ' · faltam ' + falta + (falta === 1 ? ' dia' : ' dias') };
+}
+function achar(id){ return estado.pacientes.find(p => p.id === id); }
+function dadosValidos(d){ return !!d && Array.isArray(d.pacientes) && Array.isArray(d.planos); }
+function normalizarEstado(){
+  estado.planos = estado.planos || [];
+  estado.pacientes = estado.pacientes || [];
+  estado.pacientes.forEach(p => { p.emissoes = p.emissoes || []; p.intervalo = Number(p.intervalo); p.valor = Number(p.valor); });
+}
+
+/* ---------- criptografia ---------- */
+async function derivarChave(senha, saltBytes, it){
+  const base = await crypto.subtle.importKey('raw', enc.encode(senha), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: saltBytes, iterations: it, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+async function cifrar(k, obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, enc.encode(JSON.stringify(obj)));
+  return { iv: b64(iv), dados: b64(new Uint8Array(ct)) };
+}
+async function decifrar(k, c){
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(c.iv) }, k, unb64(c.dados));
+  return JSON.parse(dec.decode(pt));
+}
+function lerCofre(){
+  try { const r = localStorage.getItem(CHAVE_COFRE); return r ? JSON.parse(r) : null; }
+  catch (e) { return null; }
+}
+function gravarCofre(c){ localStorage.setItem(CHAVE_COFRE, JSON.stringify(c)); }
+
+// Salva em fila e com o estado do momento da chamada, para que um bloqueio logo depois não perca a alteração.
+function salvar(){
+  const alvo = estado, k = chave, s = salt, it = iter;
+  fila = fila.then(async () => {
+    if (!alvo || !k) return;
+    const { iv, dados } = await cifrar(k, alvo);
+    gravarCofre({ formato: 'notas-em-dia', versao: 1, iter: it, salt: s, iv, dados });
+  }).catch(() => toast('Não consegui salvar. Tente de novo.'));
+  return fila;
+}
+
+async function criarCofre(senha){
+  const s = crypto.getRandomValues(new Uint8Array(16));
+  salt = b64(s);
+  iter = ITER;
+  chave = await derivarChave(senha, s, iter);
+  estado = { versao: 1, planos: PLANOS_INICIAIS.map((p, i) => ({ id: 'pl' + (i + 1), nome: p.nome, intervalo: p.intervalo })), pacientes: [] };
+  await salvar();
+  await fila;
+}
+async function desbloquear(senha){
+  const c = lerCofre();
+  if (!c) throw new Error('sem-cofre');
+  const k = await derivarChave(senha, unb64(c.salt), c.iter);
+  const dados = await decifrar(k, c);
+  chave = k; salt = c.salt; iter = c.iter;
+  estado = dados;
+  normalizarEstado();
+}
+function bloquear(){
+  fecharFolha();
+  estado = null; chave = null; salt = null;
+  tela = { nome: 'emitir' }; busca = '';
+  clearTimeout(timerInat);
+  render();
+}
+
+/* ---------- bloqueio automático ---------- */
+function marcarAtividade(){
+  if (!estado) return;
+  clearTimeout(timerInat);
+  timerInat = setTimeout(bloquear, INATIVIDADE_MS);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearTimeout(timerOculto);
+    timerOculto = setTimeout(() => { if (estado && !ocupado) bloquear(); }, OCULTO_MS);
+  } else {
+    clearTimeout(timerOculto);
+  }
+});
+
+/* ---------- avisos e cópia ---------- */
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(timerToast);
+  timerToast = setTimeout(() => t.classList.remove('on'), 2600);
+}
+async function copiar(texto, msg){
+  let ok = false;
+  try { await navigator.clipboard.writeText(texto); ok = true; } catch (e) { ok = false; }
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+  }
+  toast(ok ? msg : 'Não consegui copiar. Selecione o texto e copie.');
+  return ok;
+}
+function copiarCpf(p){
+  const texto = formatCpf(p.cpf);
+  copiar(texto, 'CPF copiado').then(ok => {
+    if (!ok) return;
+    cpfCopiado = texto;
+    clearTimeout(timerLimpa);
+    timerLimpa = setTimeout(() => {
+      if (cpfCopiado === texto && navigator.clipboard) navigator.clipboard.writeText('').catch(() => {});
+      cpfCopiado = null;
+    }, LIMPA_CPF_MS);
+  });
+}
+
+/* ---------- folhas (janelas de formulário) ---------- */
+function abrirFolha(titulo, corpo){
+  fecharFolha();
+  const el = document.createElement('div');
+  el.className = 'folha-fundo';
+  el.innerHTML = '<section class="folha" role="dialog" aria-modal="true" aria-labelledby="folha-titulo">' +
+    '<header class="folha-topo"><h2 id="folha-titulo">' + esc(titulo) + '</h2>' +
+    '<button type="button" class="btn-icone" data-act="fechar-folha" aria-label="Fechar">✕</button></header>' +
+    '<div class="folha-corpo">' + corpo + '</div></section>';
+  document.body.appendChild(el);
+  folha = el;
+}
+function fecharFolha(){
+  if (folha) { folha.remove(); folha = null; }
+}
+function mostrarErro(el, msg){ el.textContent = msg; el.hidden = false; }
+
+/* ---------- telas de entrada ---------- */
+function telaCriar(){
+  return '<main class="entrada"><div class="card">' +
+    '<h1>Notas em Dia</h1>' +
+    '<p>Crie uma senha para proteger os dados dos pacientes. Ela é pedida toda vez que o app é aberto.</p>' +
+    '<form data-form="criar" class="form" novalidate>' +
+      '<label>Senha (mínimo ' + MIN_SENHA + ' caracteres)<input type="password" name="senha" autocomplete="new-password"></label>' +
+      '<label>Repita a senha<input type="password" name="confirma" autocomplete="new-password"></label>' +
+      '<p class="aviso">Guarde a senha em lugar seguro. Sem ela não há como abrir os dados, e ela não pode ser recuperada.</p>' +
+      '<p class="erro" hidden></p>' +
+      '<button class="btn-pri bloco" type="submit">Criar senha e entrar</button>' +
+    '</form>' +
+    '<p class="sub centro" style="margin:16px 0 0">Já tem um backup de outro aparelho?</p>' +
+    '<label class="btn-sec bloco" style="position:relative;overflow:hidden">Restaurar backup<input type="file" id="arquivo-backup" accept=".json,application/json" class="sr-input"></label>' +
+    '<p class="sub centro" style="margin:16px 0 0"><a href="./index.html" style="color:var(--pri);font-weight:700">‹ Voltar ao menu de apps</a></p>' +
+  '</div></main>';
+}
+function telaEntrar(){
+  return '<main class="entrada"><div class="card">' +
+    '<h1>Notas em Dia</h1>' +
+    '<p>Digite a senha para abrir.</p>' +
+    '<form data-form="entrar" class="form" novalidate>' +
+      '<label>Senha<input type="password" name="senha" autocomplete="current-password"></label>' +
+      '<p class="erro" hidden></p>' +
+      '<button class="btn-pri bloco" type="submit">Entrar</button>' +
+    '</form>' +
+    '<p class="sub centro" style="margin:16px 0 0">Sem a senha, os dados não podem ser abertos. Se tiver um backup, é possível restaurá-lo e usar a senha que estava em uso quando ele foi feito.</p>' +
+    '<label class="btn-sec bloco" style="position:relative;overflow:hidden">Restaurar backup<input type="file" id="arquivo-backup" accept=".json,application/json" class="sr-input"></label>' +
+    '<p class="sub centro" style="margin:16px 0 0"><a href="./index.html" style="color:var(--pri);font-weight:700">‹ Voltar ao menu de apps</a></p>' +
+  '</div></main>';
+}
+
+/* ---------- renderização ---------- */
+function render(){
+  const app = $('#app');
+  if (!estado) {
+    app.innerHTML = lerCofre() ? telaEntrar() : telaCriar();
+    return;
+  }
+  app.innerHTML =
+    '<header class="topo"><a class="btn-topo" href="./index.html" style="text-decoration:none;display:inline-flex;align-items:center">‹ Menu</a><h1>Notas em Dia</h1><button type="button" class="btn-topo" data-act="bloquear">Bloquear</button></header>' +
+    '<main class="conteudo" id="conteudo">' + conteudo() + '</main>' +
+    '<nav class="tabs" aria-label="Principal">' +
+      abaBotao('emitir', 'Emitir') + abaBotao('pacientes', 'Pacientes') +
+      abaBotao('descricoes', 'Descrições') + abaBotao('ajustes', 'Ajustes') +
+    '</nav>';
+  marcarAtividade();
+}
+function abaBotao(nome, rotulo){
+  const ativa = tela.nome === nome || (tela.nome === 'paciente' && nome === 'pacientes');
+  return '<button type="button" class="tab' + (ativa ? ' on' : '') + '" data-act="ir" data-tela="' + nome + '"' + (ativa ? ' aria-current="page"' : '') + '>' + rotulo + '</button>';
+}
+function conteudo(){
+  switch (tela.nome) {
+    case 'pacientes': return vPacientes();
+    case 'paciente': return vPaciente(tela.id);
+    case 'descricoes': return vDescricoes();
+    case 'ajustes': return vAjustes();
+    default: return vEmitir();
+  }
+}
+
+function vEmitir(){
+  if (!estado.pacientes.length) {
+    return '<section class="card"><h2>Comece pelo cadastro</h2>' +
+      '<p class="sub" style="margin:8px 0 14px">Cadastre os pacientes para ver quem já pode receber nota e a data em que cada um volta a ser elegível.</p>' +
+      '<button type="button" class="btn-pri bloco" data-act="novo">Cadastrar paciente</button></section>';
+  }
+  const hoje = hojeISO();
+  const itens = estado.pacientes.map(p => ({ p, s: situacao(p, hoje) }));
+  const podem = itens.filter(x => x.s.pode).sort((a, b) => (a.s.proxima || '').localeCompare(b.s.proxima || '') || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
+  const aguardam = itens.filter(x => !x.s.pode).sort((a, b) => a.s.proxima.localeCompare(b.s.proxima) || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
+  return '<p class="resumo">Hoje, ' + dataBR(hoje) + ' · <strong>' + podem.length + '</strong> podem emitir · <strong>' + aguardam.length + '</strong> aguardando</p>' +
+    '<h2 class="secao">Pode emitir agora</h2>' +
+    (podem.length ? podem.map(cardEmitir).join('') : '<p class="vazio-txt">Ninguém pode emitir hoje.</p>') +
+    '<h2 class="secao">Aguardando prazo</h2>' +
+    (aguardam.length ? aguardam.map(cardEmitir).join('') : '<p class="vazio-txt">Ninguém aguardando.</p>');
+}
+function cardEmitir(x){
+  const p = x.p, s = x.s;
+  const ult = ultimaNota(p);
+  return '<article class="card">' +
+    '<div class="linha"><h3><button type="button" class="link-nome" data-act="abrir" data-id="' + p.id + '">' + esc(p.nome) + '</button></h3>' +
+    '<span class="chip ' + (s.pode ? 'pode' : 'aguarda') + '">' + (s.pode ? 'Pode emitir' : 'Aguardar') + '</span></div>' +
+    '<p class="sub">' + esc(p.plano) + ' · ' + TIPOS[p.tipo] + ' · ' + reais(p.valor) + '</p>' +
+    '<p class="status ' + (s.pode ? 'ok' : 'warn') + '">' + esc(s.texto) + '</p>' +
+    '<p class="sub">Última nota: ' + (ult ? dataBR(ult) : 'nenhuma') + '</p>' +
+    '<button type="button" class="' + (s.pode ? 'btn-pri' : 'btn-sec') + ' bloco" data-act="emitir" data-id="' + p.id + '">Registrar emissão</button>' +
+  '</article>';
+}
+
+function passaBusca(p, q, qd){
+  if (!q && !qd) return true;
+  if (q && norm(p.nome).includes(q)) return true;
+  if (qd.length >= 3 && p.cpf.includes(qd)) return true;
+  return false;
+}
+function listaPacientes(){
+  if (!estado.pacientes.length) return '<p class="vazio-txt">Nenhum paciente cadastrado ainda.</p>';
+  const q = norm(busca.trim());
+  const qd = busca.replace(/\D/g, '');
+  const lista = estado.pacientes.filter(p => passaBusca(p, q, qd)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  if (!lista.length) return '<p class="vazio-txt">Nenhum paciente encontrado para “' + esc(busca) + '”.</p>';
+  return lista.map(p => {
+    const s = situacao(p);
+    return '<button type="button" class="card item" data-act="abrir" data-id="' + p.id + '">' +
+      '<span class="nome">' + esc(p.nome) + '</span>' +
+      '<span class="sub">' + esc(p.plano) + ' · ' + TIPOS[p.tipo] + ' · CPF ' + formatCpf(p.cpf) + '</span>' +
+      '<span class="status ' + (s.pode ? 'ok' : 'warn') + '">' + esc(s.texto) + '</span>' +
+    '</button>';
+  }).join('');
+}
+function vPacientes(){
+  return '<div class="linha topo-lista"><h2>Pacientes</h2><button type="button" class="btn-pri" data-act="novo">+ Novo</button></div>' +
+    '<label class="busca"><span class="sr">Pesquisar</span><input id="busca" type="search" placeholder="Pesquisar por nome ou CPF" value="' + esc(busca) + '" autocomplete="off"></label>' +
+    '<div id="lista">' + listaPacientes() + '</div>';
+}
+
+function vPaciente(id){
+  const p = achar(id);
+  if (!p) { tela = { nome: 'pacientes' }; return vPacientes(); }
+  const s = situacao(p);
+  const ult = ultimaNota(p);
+  const hist = p.emissoes.slice().sort((a, b) => b.data.localeCompare(a.data));
+  return '<button type="button" class="btn-txt" data-act="ir" data-tela="pacientes">‹ Pacientes</button>' +
+    '<article class="card" style="margin-top:8px">' +
+      '<h2 class="nome-grande">' + esc(p.nome) + '</h2>' +
+      '<span class="chip ' + (s.pode ? 'pode' : 'aguarda') + '">' + esc(s.texto) + '</span>' +
+      '<dl class="ficha">' +
+        '<dt>CPF</dt><dd>' + formatCpf(p.cpf) + '</dd>' +
+        '<dt>Plano</dt><dd>' + esc(p.plano) + '</dd>' +
+        '<dt>Atendimento</dt><dd>' + TIPOS[p.tipo] + '</dd>' +
+        '<dt>Valor da nota</dt><dd>' + reais(p.valor) + '</dd>' +
+        '<dt>Intervalo entre notas</dt><dd>' + p.intervalo + ' dias</dd>' +
+        '<dt>Última nota</dt><dd>' + (ult ? dataBR(ult) : 'Nunca emitiu') + '</dd>' +
+        '<dt>Próxima nota a partir de</dt><dd>' + (s.proxima ? dataBR(s.proxima) : 'Agora') + '</dd>' +
+      '</dl>' +
+      '<div class="acoes-grade">' +
+        '<button type="button" class="btn-sec" data-act="copiar-cpf" data-id="' + p.id + '">Copiar CPF</button>' +
+        '<button type="button" class="btn-sec" data-act="copiar-desc" data-id="' + p.id + '">Copiar descrição</button>' +
+        '<button type="button" class="btn-pri" data-act="emitir" data-id="' + p.id + '">Registrar emissão</button>' +
+        '<button type="button" class="btn-sec" data-act="editar" data-id="' + p.id + '">Editar</button>' +
+      '</div>' +
+    '</article>' +
+    '<h2 class="secao">Histórico de notas</h2>' +
+    (hist.length
+      ? '<ul class="hist">' + hist.map(e =>
+          '<li><span><strong>' + dataBR(e.data) + '</strong> · ' + reais(e.valor) +
+          (e.origem === 'cadastro' ? ' <span class="sub">(informada no cadastro)</span>' : '') + '</span>' +
+          '<button type="button" class="btn-txt perigo" data-act="apagar-emissao" data-id="' + p.id + '" data-eid="' + e.id + '">Remover</button></li>').join('') + '</ul>'
+      : '<p class="vazio-txt">Nenhuma nota registrada ainda.</p>') +
+    '<button type="button" class="btn-perigo bloco" data-act="excluir" data-id="' + p.id + '">Excluir paciente</button>';
+}
+
+function vDescricoes(){
+  return '<h2>Descrições para a nota</h2>' +
+    '<p class="sub" style="margin:6px 0 14px">Toque em Copiar e cole na nota fiscal.</p>' +
+    ['consulta', 'acupuntura'].map(t =>
+      '<article class="card"><h3>' + TIPOS[t] + '</h3>' +
+      '<p class="texto-desc">' + esc(DESCRICOES[t]) + '</p>' +
+      '<button type="button" class="btn-pri bloco" data-act="copiar-texto" data-tipo="' + t + '">Copiar texto</button></article>'
+    ).join('');
+}
+
+function vAjustes(){
+  const planos = estado.planos.map(pl =>
+    '<li><span><strong>' + esc(pl.nome) + '</strong><br><span class="sub">' + pl.intervalo + ' dias entre notas</span></span>' +
+    '<span class="acoes-pequenas"><button type="button" class="btn-txt" data-act="plano-editar" data-id="' + pl.id + '">Editar</button>' +
+    '<button type="button" class="btn-txt perigo" data-act="plano-remover" data-id="' + pl.id + '">Remover</button></span></li>').join('');
+  return '<h2>Planos de saúde</h2>' +
+    '<p class="sub" style="margin:6px 0 12px">Os planos preenchem o intervalo no cadastro. Mudar aqui não altera pacientes já cadastrados.</p>' +
+    '<ul class="lista-planos">' + (planos || '<li class="sub">Nenhum plano cadastrado.</li>') + '</ul>' +
+    '<button type="button" class="btn-sec bloco" data-act="plano-novo">+ Adicionar plano</button>' +
+    '<h2 class="secao">Segurança</h2>' +
+    '<div class="card"><p>Os dados ficam criptografados neste aparelho. Sem a senha ninguém consegue abri-los.</p>' +
+      '<div class="acoes-grade"><button type="button" class="btn-sec" data-act="trocar-senha">Trocar senha</button>' +
+      '<button type="button" class="btn-sec" data-act="bloquear">Bloquear agora</button></div></div>' +
+    '<h2 class="secao">Dados</h2>' +
+    '<div class="card acoes-lista">' +
+      '<button type="button" class="btn-pri bloco" data-act="backup">Salvar backup criptografado</button>' +
+      '<label class="btn-sec bloco" style="position:relative;overflow:hidden">Restaurar backup<input type="file" id="arquivo-backup" accept=".json,application/json" class="sr-input"></label>' +
+      '<button type="button" class="btn-sec bloco" data-act="csv">Exportar emissões do mês (planilha)</button>' +
+      '<button type="button" class="btn-perigo bloco" data-act="apagar">Apagar todos os dados deste aparelho</button>' +
+    '</div>' +
+    '<p class="rodape">Notas em Dia · versão ' + VERSAO + '</p>';
+}
+
+/* ---------- cadastro de paciente ---------- */
+function formPaciente(p){
+  const v = p || { nome: '', cpf: '', valor: '', plano: '', intervalo: '', tipo: 'consulta' };
+  const valorTxt = p ? numeroBR(p.valor) : '';
+  const opcoesPlano = estado.planos.map(pl => '<option value="' + esc(pl.nome) + '"></option>').join('');
+  return '<form data-form="paciente" data-id="' + (p ? p.id : '') + '" class="form" novalidate>' +
+    '<label>Nome do paciente <span class="ajuda">Dois nomes bastam, ex.: Maria Silva</span>' +
+      '<input name="nome" autocomplete="off" value="' + esc(v.nome) + '"></label>' +
+    '<label>CPF <span class="ajuda">Somente números, a formatação é automática</span>' +
+      '<input name="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" value="' + esc(mascaraCpf(p ? p.cpf : '')) + '"></label>' +
+    '<label>Valor da nota (R$)<input name="valor" inputmode="decimal" placeholder="0,00" value="' + esc(valorTxt) + '"></label>' +
+    '<label>Plano de saúde <span class="ajuda">Escolha um plano da lista ou digite outro</span>' +
+      '<input name="plano" list="lista-planos" autocomplete="off" value="' + esc(v.plano) + '"></label>' +
+    '<datalist id="lista-planos">' + opcoesPlano + '</datalist>' +
+    '<label>Intervalo entre notas (dias) <span class="ajuda">Preenchido pelo plano; pode ser ajustado</span>' +
+      '<input name="intervalo" inputmode="numeric" data-manual="' + (p ? '1' : '') + '" value="' + esc(v.intervalo) + '"></label>' +
+    '<fieldset class="opcoes"><legend>Tipo de atendimento</legend>' +
+      '<label class="op"><input type="radio" name="tipo" value="consulta"' + (v.tipo !== 'acupuntura' ? ' checked' : '') + '> Consulta médica</label>' +
+      '<label class="op"><input type="radio" name="tipo" value="acupuntura"' + (v.tipo === 'acupuntura' ? ' checked' : '') + '> Acupuntura</label>' +
+    '</fieldset>' +
+    (p
+      ? '<p class="sub" style="margin:0 0 14px">Última nota: ' + (ultimaNota(p) ? dataBR(ultimaNota(p)) : 'nenhuma') + '. Para registrar uma nova nota, use “Registrar emissão”.</p>'
+      : '<label>Data da última nota emitida <span class="ajuda">Deixe em branco se nunca emitiu</span><input type="date" name="ultimaNota" max="' + hojeISO() + '"></label>') +
+    '<p class="erro" hidden></p>' +
+    '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Salvar</button></div>' +
+  '</form>';
+}
+function salvarPaciente(f){
+  const erro = f.querySelector('.erro');
+  const id = f.dataset.id;
+  const el = f.elements;
+  const nome = el.nome.value.trim().replace(/\s+/g, ' ');
+  const cpf = el.cpf.value.replace(/\D/g, '');
+  const valor = parseValor(el.valor.value);
+  const plano = el.plano.value.trim();
+  const intervalo = Number(el.intervalo.value);
+  const tipo = el.tipo.value;
+  const ultima = el.ultimaNota ? el.ultimaNota.value : '';
+  let msg = '';
+  if (!nomeValido(nome)) msg = 'Digite pelo menos dois nomes, ex.: Maria Silva.';
+  else if (!cpfValido(cpf)) msg = 'CPF inválido. Confira os 11 números.';
+  else if (estado.pacientes.some(p => p.cpf === cpf && p.id !== id)) msg = 'Já existe um paciente cadastrado com este CPF.';
+  else if (isNaN(valor)) msg = 'Valor inválido. Use, por exemplo, 150,00.';
+  else if (!plano) msg = 'Informe o plano de saúde.';
+  else if (!Number.isInteger(intervalo) || intervalo < 1) msg = 'O intervalo precisa ser um número de dias, 1 ou mais.';
+  else if (ultima && ultima > hojeISO()) msg = 'A data da última nota não pode ser no futuro.';
+  if (msg) { mostrarErro(erro, msg); return; }
+
+  if (id) {
+    const p = achar(id);
+    Object.assign(p, { nome, cpf, valor, plano, intervalo, tipo });
+  } else {
+    const p = { id: novoId(), nome, cpf, valor, plano, intervalo, tipo, emissoes: [] };
+    if (ultima) p.emissoes.push({ id: novoId(), data: ultima, valor, origem: 'cadastro' });
+    estado.pacientes.push(p);
+  }
+  salvar();
+  fecharFolha();
+  toast('Paciente salvo');
+  render();
+}
+
+/* ---------- registro de emissão ---------- */
+function abrirEmissao(p){
+  const hoje = hojeISO();
+  const s = situacao(p, hoje);
+  abrirFolha('Registrar emissão',
+    '<form data-form="emissao" data-id="' + p.id + '" class="form" novalidate>' +
+      '<p><strong>' + esc(p.nome) + '</strong><br><span class="sub">' + esc(p.plano) + ' · ' + TIPOS[p.tipo] + '</span></p>' +
+      '<p class="status ' + (s.pode ? 'ok' : 'warn') + '">' + esc(s.texto) + '</p>' +
+      '<label>Data da emissão<input type="date" name="data" value="' + hoje + '" max="' + hoje + '"></label>' +
+      '<label>Valor (R$)<input name="valor" inputmode="decimal" value="' + esc(numeroBR(p.valor)) + '"></label>' +
+      '<p class="erro" hidden></p>' +
+      '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Salvar emissão</button></div>' +
+    '</form>');
+}
+function salvarEmissao(f){
+  const erro = f.querySelector('.erro');
+  const p = achar(f.dataset.id);
+  if (!p) { fecharFolha(); return; }
+  const data = f.elements.data.value;
+  const valor = parseValor(f.elements.valor.value);
+  let msg = '';
+  if (!data || data > hojeISO()) msg = 'Informe uma data de hoje ou anterior.';
+  else if (isNaN(valor)) msg = 'Valor inválido.';
+  if (msg) { mostrarErro(erro, msg); return; }
+  const s = situacao(p);
+  if (!s.pode && !window.confirm('Este paciente ainda está no prazo (' + s.texto + '). Registrar a emissão mesmo assim?')) return;
+  p.emissoes.push({ id: novoId(), data, valor, origem: 'registro' });
+  salvar();
+  fecharFolha();
+  const prox = situacao(p);
+  toast('Emissão registrada. ' + (prox.proxima ? 'Próxima nota a partir de ' + dataBR(prox.proxima) : ''));
+  render();
+}
+
+/* ---------- planos ---------- */
+function abrirPlano(pl){
+  abrirFolha(pl ? 'Editar plano' : 'Novo plano',
+    '<form data-form="plano" data-id="' + (pl ? pl.id : '') + '" class="form" novalidate>' +
+      '<label>Nome do plano<input name="nome" autocomplete="off" value="' + esc(pl ? pl.nome : '') + '"></label>' +
+      '<label>Intervalo entre notas (dias)<input name="intervalo" inputmode="numeric" value="' + (pl ? pl.intervalo : 30) + '"></label>' +
+      '<p class="erro" hidden></p>' +
+      '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Salvar</button></div>' +
+    '</form>');
+}
+function salvarPlano(f){
+  const erro = f.querySelector('.erro');
+  const id = f.dataset.id;
+  const nome = f.elements.nome.value.trim().replace(/\s+/g, ' ');
+  const intervalo = Number(f.elements.intervalo.value);
+  let msg = '';
+  if (!nome) msg = 'Digite o nome do plano.';
+  else if (estado.planos.some(x => norm(x.nome) === norm(nome) && x.id !== id)) msg = 'Já existe um plano com este nome.';
+  else if (!Number.isInteger(intervalo) || intervalo < 1) msg = 'O intervalo precisa ser um número de dias, 1 ou mais.';
+  if (msg) { mostrarErro(erro, msg); return; }
+  if (id) {
+    const pl = estado.planos.find(x => x.id === id);
+    pl.nome = nome; pl.intervalo = intervalo;
+  } else {
+    estado.planos.push({ id: novoId(), nome, intervalo });
+  }
+  salvar();
+  fecharFolha();
+  toast('Plano salvo');
+  render();
+}
+
+/* ---------- senha, apagar e confirmar identidade ---------- */
+async function senhaAtualConfere(senha){
+  const c = lerCofre();
+  if (!c) return false;
+  try {
+    const k = await derivarChave(senha, unb64(c.salt), c.iter);
+    await decifrar(k, c);
+    return true;
+  } catch (e) { return false; }
+}
+function abrirTrocaSenha(){
+  abrirFolha('Trocar senha',
+    '<form data-form="senha" class="form" novalidate>' +
+      '<label>Senha atual<input type="password" name="atual" autocomplete="current-password"></label>' +
+      '<label>Nova senha (mínimo ' + MIN_SENHA + ' caracteres)<input type="password" name="nova" autocomplete="new-password"></label>' +
+      '<label>Repita a nova senha<input type="password" name="confirma" autocomplete="new-password"></label>' +
+      '<p class="aviso">Backups feitos antes desta troca continuam pedindo a senha antiga.</p>' +
+      '<p class="erro" hidden></p>' +
+      '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Trocar senha</button></div>' +
+    '</form>');
+}
+async function trocarSenha(f){
+  const erro = f.querySelector('.erro');
+  const atual = f.elements.atual.value, nova = f.elements.nova.value;
+  if (nova.length < MIN_SENHA) { mostrarErro(erro, 'A nova senha precisa ter pelo menos ' + MIN_SENHA + ' caracteres.'); return; }
+  if (nova !== f.elements.confirma.value) { mostrarErro(erro, 'As senhas novas não são iguais.'); return; }
+  if (!(await senhaAtualConfere(atual))) { mostrarErro(erro, 'Senha atual incorreta.'); return; }
+  const s = crypto.getRandomValues(new Uint8Array(16));
+  chave = await derivarChave(nova, s, ITER);
+  salt = b64(s);
+  iter = ITER;
+  await salvar();
+  await fila;
+  fecharFolha();
+  toast('Senha trocada');
+}
+function abrirApagar(){
+  abrirFolha('Apagar tudo',
+    '<form data-form="apagar" class="form" novalidate>' +
+      '<p class="aviso">Isso apaga todos os pacientes, notas e planos deste aparelho. Não tem como desfazer. Faça um backup antes, se precisar.</p>' +
+      '<label>Senha atual<input type="password" name="atual" autocomplete="current-password"></label>' +
+      '<p class="erro" hidden></p>' +
+      '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-perigo">Apagar tudo</button></div>' +
+    '</form>');
+}
+async function apagarTudo(f){
+  const erro = f.querySelector('.erro');
+  if (!(await senhaAtualConfere(f.elements.atual.value))) { mostrarErro(erro, 'Senha incorreta.'); return; }
+  if (!window.confirm('Confirma apagar todos os dados deste aparelho?')) return;
+  localStorage.removeItem(CHAVE_COFRE);
+  estado = null; chave = null; salt = null;
+  fecharFolha();
+  render();
+  toast('Dados apagados');
+}
+
+/* ---------- backup ---------- */
+function baixar(nome, texto, tipo){
+  const url = URL.createObjectURL(new Blob([texto], { type: tipo }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+async function fazerBackup(){
+  await fila;
+  const c = lerCofre();
+  if (!c) { toast('Nada para salvar.'); return; }
+  baixar('notas-em-dia-backup-' + hojeISO() + '.json', JSON.stringify(c, null, 2), 'application/json');
+  toast('Backup salvo. Guarde o arquivo em lugar seguro.');
+}
+function lerArquivoBackup(file){
+  const r = new FileReader();
+  r.onload = () => {
+    let c = null;
+    try { c = JSON.parse(String(r.result)); } catch (e) { c = null; }
+    if (!c || c.formato !== 'notas-em-dia' || !c.salt || !c.iv || !c.dados) {
+      toast('Este arquivo não é um backup do Notas em Dia.');
+      return;
+    }
+    importacao = c;
+    abrirFolha('Senha do backup',
+      '<form data-form="importar" class="form" novalidate>' +
+        '<p>Digite a senha que estava em uso quando este backup foi salvo.</p>' +
+        '<label>Senha do backup<input type="password" name="senha" autocomplete="off"></label>' +
+        '<p class="erro" hidden></p>' +
+        '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Restaurar</button></div>' +
+      '</form>');
+  };
+  r.readAsText(file);
+}
+async function concluirImportacao(f){
+  const erro = f.querySelector('.erro');
+  const c = importacao;
+  if (!c) { fecharFolha(); return; }
+  let k, dados;
+  try {
+    k = await derivarChave(f.elements.senha.value, unb64(c.salt), c.iter);
+    dados = await decifrar(k, c);
+  } catch (e) { mostrarErro(erro, 'Senha incorreta para este backup.'); return; }
+  if (!dadosValidos(dados)) { mostrarErro(erro, 'O backup está com dados inválidos.'); return; }
+  if (lerCofre() && !window.confirm('Substituir os dados deste aparelho pelos do backup?')) return;
+  gravarCofre(c);
+  chave = k; salt = c.salt; iter = c.iter;
+  estado = dados;
+  normalizarEstado();
+  importacao = null;
+  fecharFolha();
+  tela = { nome: 'emitir' };
+  render();
+  toast('Backup restaurado.');
+}
+
+/* ---------- planilha para o contador ---------- */
+function abrirCsv(){
+  abrirFolha('Exportar emissões',
+    '<form data-form="csv" class="form" novalidate>' +
+      '<p>Gera uma planilha com as notas registradas no mês, para enviar ao contador.</p>' +
+      '<label>Mês<input type="month" name="mes" value="' + hojeISO().slice(0, 7) + '"></label>' +
+      '<p class="aviso">Atenção: a planilha traz CPFs sem criptografia. Envie só para quem precisa e apague o arquivo depois.</p>' +
+      '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Gerar planilha</button></div>' +
+    '</form>');
+}
+function exportarCsv(f){
+  const mes = f.elements.mes.value;
+  if (!/^\d{4}-\d{2}$/.test(mes)) { toast('Escolha um mês.'); return; }
+  const registros = [];
+  estado.pacientes.forEach(p => p.emissoes.forEach(e => { if (e.data.startsWith(mes)) registros.push({ p, e }); }));
+  registros.sort((a, b) => a.e.data.localeCompare(b.e.data) || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
+  const linhas = [['Data', 'Paciente', 'CPF', 'Plano', 'Atendimento', 'Valor (R$)']];
+  registros.forEach(({ p, e }) => linhas.push([dataBR(e.data), p.nome, formatCpf(p.cpf), p.plano, TIPOS[p.tipo], numeroBR(e.valor)]));
+  const texto = '﻿' + linhas.map(l => l.map(csvCampo).join(';')).join('\r\n') + '\r\n';
+  baixar('emissoes-' + mes + '.csv', texto, 'text/csv;charset=utf-8');
+  fecharFolha();
+  toast('Planilha gerada: ' + registros.length + ' nota(s) no mês.');
+}
+
+/* ---------- ações e formulários ---------- */
+function acao(nome, el){
+  switch (nome) {
+    case 'ir':
+      tela = { nome: el.dataset.tela };
+      render();
+      window.scrollTo(0, 0);
+      break;
+    case 'bloquear':
+      bloquear();
+      break;
+    case 'novo':
+      abrirFolha('Novo paciente', formPaciente(null));
+      break;
+    case 'abrir':
+      tela = { nome: 'paciente', id: el.dataset.id };
+      render();
+      window.scrollTo(0, 0);
+      break;
+    case 'editar': {
+      const p = achar(el.dataset.id);
+      if (p) abrirFolha('Editar paciente', formPaciente(p));
+      break;
+    }
+    case 'excluir': {
+      const p = achar(el.dataset.id);
+      if (p && window.confirm('Excluir ' + p.nome + '? O histórico de notas dele também será apagado.')) {
+        estado.pacientes = estado.pacientes.filter(x => x.id !== p.id);
+        salvar();
+        tela = { nome: 'pacientes' };
+        render();
+        toast('Paciente excluído');
+      }
+      break;
+    }
+    case 'apagar-emissao': {
+      const p = achar(el.dataset.id);
+      if (p && window.confirm('Remover esta nota do histórico?')) {
+        p.emissoes = p.emissoes.filter(e => e.id !== el.dataset.eid);
+        salvar();
+        render();
+        toast('Nota removida do histórico');
+      }
+      break;
+    }
+    case 'emitir': {
+      const p = achar(el.dataset.id);
+      if (p) abrirEmissao(p);
+      break;
+    }
+    case 'copiar-cpf': {
+      const p = achar(el.dataset.id);
+      if (p) copiarCpf(p);
+      break;
+    }
+    case 'copiar-desc': {
+      const p = achar(el.dataset.id);
+      if (p) copiar(DESCRICOES[p.tipo], 'Descrição copiada');
+      break;
+    }
+    case 'copiar-texto':
+      copiar(DESCRICOES[el.dataset.tipo], 'Texto copiado');
+      break;
+    case 'fechar-folha':
+      fecharFolha();
+      break;
+    case 'plano-novo':
+      abrirPlano(null);
+      break;
+    case 'plano-editar': {
+      const pl = estado.planos.find(x => x.id === el.dataset.id);
+      if (pl) abrirPlano(pl);
+      break;
+    }
+    case 'plano-remover': {
+      const pl = estado.planos.find(x => x.id === el.dataset.id);
+      if (pl && window.confirm('Remover o plano “' + pl.nome + '”? Os pacientes já cadastrados não são alterados.')) {
+        estado.planos = estado.planos.filter(x => x.id !== pl.id);
+        salvar();
+        render();
+      }
+      break;
+    }
+    case 'trocar-senha':
+      abrirTrocaSenha();
+      break;
+    case 'backup':
+      fazerBackup();
+      break;
+    case 'csv':
+      abrirCsv();
+      break;
+    case 'apagar':
+      abrirApagar();
+      break;
+  }
+}
+
+const FORMULARIOS = {
+  criar: async f => {
+    const erro = f.querySelector('.erro');
+    const s = f.elements.senha.value;
+    if (s.length < MIN_SENHA) { mostrarErro(erro, 'A senha precisa ter pelo menos ' + MIN_SENHA + ' caracteres.'); return; }
+    if (s !== f.elements.confirma.value) { mostrarErro(erro, 'As senhas não são iguais.'); return; }
+    ocupado = true;
+    try {
+      await criarCofre(s);
+      tela = { nome: 'emitir' };
+      render();
+      toast('Senha criada. Dados protegidos.');
+    } finally { ocupado = false; }
+  },
+  entrar: async f => {
+    const erro = f.querySelector('.erro');
+    ocupado = true;
+    try {
+      await desbloquear(f.elements.senha.value);
+      tela = { nome: 'emitir' };
+      render();
+    } catch (e) {
+      if (e && e.name === 'OperationError') mostrarErro(erro, 'Senha incorreta. Tente de novo.');
+      else mostrarErro(erro, 'Não consegui abrir os dados. O arquivo pode estar danificado.');
+      f.elements.senha.select();
+    } finally { ocupado = false; }
+  },
+  paciente: f => salvarPaciente(f),
+  emissao: f => salvarEmissao(f),
+  plano: f => salvarPlano(f),
+  senha: f => trocarSenha(f),
+  apagar: f => apagarTudo(f),
+  importar: f => concluirImportacao(f),
+  csv: f => exportarCsv(f)
+};
+
+document.addEventListener('click', e => {
+  marcarAtividade();
+  if (e.target.classList && e.target.classList.contains('folha-fundo')) { fecharFolha(); return; }
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  e.preventDefault();
+  acao(el.dataset.act, el);
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const h = FORMULARIOS[f.dataset.form];
+  if (h) h(f);
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'busca') {
+    busca = t.value;
+    const lista = $('#lista');
+    if (lista) lista.innerHTML = listaPacientes();
+    return;
+  }
+  if (t.name === 'cpf') { t.value = mascaraCpf(t.value); return; }
+  if (t.name === 'intervalo') { t.dataset.manual = '1'; return; }
+  if (t.name === 'plano' && folha) {
+    const pl = estado.planos.find(x => norm(x.nome) === norm(t.value.trim()));
+    const campo = folha.querySelector('input[name=intervalo]');
+    if (pl && campo && campo.dataset.manual !== '1') campo.value = pl.intervalo;
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'arquivo-backup' && e.target.files && e.target.files[0]) {
+    lerArquivoBackup(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+document.addEventListener('keydown', e => {
+  marcarAtividade();
+  if (e.key === 'Escape') fecharFolha();
+});
+['pointerdown', 'touchstart', 'scroll'].forEach(ev => document.addEventListener(ev, marcarAtividade, { passive: true }));
+
+/* ---------- início ---------- */
+render();
+})();
+</script>
+</body>
+</html>

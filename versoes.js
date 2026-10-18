@@ -6,8 +6,11 @@ window.MEUS_APPS_VERSOES = {
   hub: {
     nome: 'Meus apps',
     icone: 'hub-icon-192.png',
-    atual: '1.5',
+    atual: '1.6',
     historico: [
+      { versao: '1.6', itens: [
+        'Notas em Dia entra no menu: controle de notas fiscais dos pacientes, com o prazo de cada plano.',
+      ] },
       { versao: '1.5', itens: [
         'Ícone do Meus apps volta a ser o gatinho na tela inicial. O nome continua Meus apps.',
       ] },
@@ -90,6 +93,21 @@ window.MEUS_APPS_VERSOES = {
       ] },
       { versao: '1.0', itens: [
         'Listas de mercado, farmácia, pet shop e casa, com pastas por loja, ordem por corredor e marcação de encarte.',
+      ] },
+    ],
+  },
+  notas: {
+    nome: 'Notas em Dia',
+    icone: 'notas-icon-192.png',
+    atual: '1.0',
+    historico: [
+      { versao: '1.0', itens: [
+        'Quem pode receber nota agora e quem aguarda, com a data de cada um e os dias que faltam.',
+        'Cadastro com nome, CPF, valor, plano e tipo de atendimento. Busca por nome ou CPF, e o CPF pode ser copiado.',
+        'Registrar emissão grava a data e calcula a próxima sozinho. Histórico de notas por paciente.',
+        'Descrições padronizadas das consultas e da acupuntura, com botão para copiar.',
+        'Planilha das emissões do mês para o contador.',
+        'Dados criptografados no aparelho com senha. Bloqueio automático e cópia de segurança criptografada.',
       ] },
     ],
   },

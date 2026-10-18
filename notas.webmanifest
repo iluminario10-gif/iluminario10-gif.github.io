@@ -1,0 +1,19 @@
+{
+  "id": "notas-em-dia.html",
+  "name": "Notas em Dia",
+  "short_name": "Notas em Dia",
+  "description": "Controle de emissão de notas fiscais dos pacientes, com prazos por plano de saúde. Dados criptografados no aparelho.",
+  "lang": "pt-BR",
+  "start_url": "./notas.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F7F6",
+  "theme_color": "#0F766E",
+  "icons": [
+    { "src": "notas-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "notas-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "notas-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "notas-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

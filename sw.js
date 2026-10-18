@@ -1,6 +1,6 @@
 // Meus apps — service worker único do endereço.
 // Cobre o menu, o Patinhas, a Maison e a Listas. Ao mudar arquivos, aumente VERSAO.
-const VERSAO = 'meus-apps-v6';
+const VERSAO = 'meus-apps-v7';
 const ARQUIVOS = [
   './', './index.html', './patinhas.html', './maison.html', './listas.html', './hoje.html', './novidades.html',
   './versoes.js', './manifest.webmanifest',
@@ -10,6 +10,9 @@ const ARQUIVOS = [
   './hub-icon-180.png', './hub-icon-192.png', './hub-icon-512.png',
   './hub-maskable-192.png', './hub-maskable-512.png',
   './cat-maskable-192.png', './cat-maskable-512.png',
+  './notas.html', './notas.webmanifest',
+  './notas-icon-180.png', './notas-icon-192.png', './notas-icon-512.png',
+  './notas-maskable-192.png', './notas-maskable-512.png',
 ];
 
 self.addEventListener('install', (e) => {
