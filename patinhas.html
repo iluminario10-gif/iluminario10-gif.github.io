@@ -168,6 +168,8 @@ legend{font-size:13px;font-weight:700;color:var(--muted);padding:0;margin-bottom
 .chips-banco{display:flex;flex-wrap:wrap;gap:8px}
 .chips-banco span{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border-radius:999px;padding:5px 6px 5px 12px;font-size:13px}
 .chips-banco button{min-height:28px;width:28px;padding:0;background:transparent;color:var(--muted);font-size:16px}
+.chips-pet{display:flex;flex-wrap:wrap;gap:8px}
+.chips-pet button{width:auto;min-height:36px;padding:6px 12px;white-space:nowrap}
 
 .grafico{width:100%;height:auto;display:block}
 .grafico text{font:600 11px Figtree,system-ui,sans-serif;fill:var(--muted)}
@@ -610,6 +612,45 @@ function estiloRoda(rolo, idx){
   });
 }
 
+// ---------- Comprar para o pet (lista do pet shop, no app Listas) ----------
+const LISTAS_KEY = 'lista-mercado.v2';
+const PET_SUGESTOES = ['Ração para gatos', 'Areia higiênica', 'Petiscos', 'Antipulgas', 'Shampoo pet'];
+const PET_CATEGORIA = {'Ração para gatos': 'Ração e petiscos', 'Petiscos': 'Ração e petiscos', 'Areia higiênica': 'Areia e acessórios', 'Antipulgas': 'Saúde e antipulgas', 'Shampoo pet': 'Higiene e banho'};
+const petCategoria = (t) => PET_CATEGORIA[t] || 'Saúde e antipulgas';
+function petEnviar(textos){
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LISTAS_KEY) || 'null'); } catch (_) { s = null; }
+  if (!s || s.v !== 2 || !Array.isArray(s.listas)) { toast('Abra o app Listas uma vez para criar a lista do pet shop.'); return; }
+  let lista = s.listas.find(l => l.tipo === 'pet');
+  if (!lista) { lista = { id: uid(), nome: 'Pet shop', tipo: 'pet', modo: 'manual', exemplo: false, itens: [] }; s.listas.push(lista); }
+  lista.itens = lista.itens || [];
+  let novos = 0, somados = 0;
+  textos.map(t => String(t || '').trim()).filter(Boolean).forEach((texto) => {
+    const igual = lista.itens.find(i => !i.feito && String(i.texto).trim().toLowerCase() === texto.toLowerCase());
+    if (igual) { igual.qtd = (Number(igual.qtd) || 1) + 1; somados++; return; }
+    lista.itens.push({ id: uid(), texto, cat: petCategoria(texto), encarte: false, obs: '', feito: false, qtd: 1 });
+    novos++;
+  });
+  try { localStorage.setItem(LISTAS_KEY, JSON.stringify(s)); } catch (_) { toast('Não foi possível salvar a lista.'); return; }
+  toast(novos === 1 ? 'Adicionado à lista do pet shop' : novos > 1 ? novos + ' itens na lista do pet shop' : 'Já estava na lista: quantidade aumentada');
+}
+function cardPet(){
+  const h = hoje();
+  const acabando = todosRemedios().filter(({r}) => {
+    if (!r.dias) return false;
+    const d = dias(fimRemedio(r), h);
+    return d >= 0 && d <= 7;
+  });
+  let x = `<div class="sec"><h2>Comprar para o pet</h2></div><div class="card pilha"><p class="muted small">Toque para mandar para a lista do pet shop, no app Listas.</p>`;
+  x += `<div class="chips-pet">${PET_SUGESTOES.map(n => `<button type="button" class="pequeno ghost" data-act="pet-add" data-texto="${esc(n)}">+ ${esc(n)}</button>`).join('')}</div>`;
+  if (acabando.length) {
+    x += `<div class="pilha"><strong class="small">Tratamentos que terminam em até 7 dias</strong>${acabando.map(({c, r}) =>
+      `<div class="acoes" style="align-items:center"><span class="small" style="flex:1">${esc(r.nome)} · ${esc(c.nome)}</span><button type="button" class="pequeno ghost" data-act="pet-add" data-texto="${esc(r.nome)}">+ Lista</button></div>`).join('')}</div>`;
+  }
+  x += `<div class="acoes"><button type="button" class="pequeno ghost" data-act="pet-abrir">Abrir a lista do pet shop</button></div></div>`;
+  return x;
+}
+
 function renderHoje(){
   const lista = lembretes();
   const atrasados = lista.filter(x => x.d < 0).length;
@@ -635,6 +676,7 @@ function renderHoje(){
       return `<button class="chip" type="button" data-act="abrir" data-id="${esc(c.id)}" style="--tom:${TONS[c.tom]}">${avatar(c, false)}<strong>${esc(c.nome)}</strong><small>${p ? kg(p.valor) + ' kg' : 'sem peso'}</small></button>`;
     }).join('')}</div>`;
 
+    h += cardPet();
     if (typeof Notification !== 'undefined' && Notification.permission === 'default' && todosRemedios().some(({r}) => r.horarios && r.horarios.length)) {
       h += `<div class="card aviso-dose"><div style="min-width:0"><strong>Avisos de dose</strong><div class="muted small">Ative para o app avisar na hora de cada dose, enquanto ele estiver aberto.</div></div><button type="button" class="pequeno" data-act="ativar-avisos">Ativar</button></div>`;
     }
@@ -1002,6 +1044,8 @@ document.addEventListener('click', (ev) => {
   if (el.dataset.tab) { irPara(el.dataset.tab); return; }
   const id = el.dataset.id;
   switch (el.dataset.act) {
+    case 'pet-add': petEnviar([el.dataset.texto]); return;
+    case 'pet-abrir': window.location.href = 'listas.html#tipo=pet'; return;
     case 'abrir': abrirFicha(id); break;
     case 'registrar': abrirFicha(id, {tipo: el.dataset.tipo, nota: el.dataset.nota}); return;
     case 'dia-nova': abrirFicha(id, {data: el.dataset.d}); return;
@@ -1341,6 +1385,11 @@ if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !emCasa) $('#dica-ios').hid
 
 state = carregar();
 render();
+const atalhoGato = /^#gato=(.+)$/.exec(location.hash || '');
+if (atalhoGato) {
+  const idGato = decodeURIComponent(atalhoGato[1]);
+  if (state.cats.some(c => c.id === idGato)) abrirFicha(idGato);
+}
 setInterval(() => { if (view === 'hoje') renderHoje(); verificarDoses(); }, 30000);
 setStatus(state.cats.length ? 'Salvo neste aparelho' : '');
 </script>

@@ -22,7 +22,7 @@ header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
 header img{width:60px;height:60px;border-radius:16px;box-shadow:var(--shadow);flex:none}
 h1{font-size:26px;margin:0;letter-spacing:.2px}
 .sub{color:var(--muted);font-size:14px;margin-top:2px}
-.pendencias{margin:14px 0 4px;padding:12px 14px;border-radius:14px;background:var(--accent-soft);font-size:14px;line-height:1.45}
+.pendencias{display:block;margin:14px 0 4px;padding:12px 14px;border-radius:14px;background:var(--accent-soft);color:var(--ink);text-decoration:none;font-size:14px;line-height:1.45}
 .pendencias[hidden]{display:none}
 .lista{display:flex;flex-direction:column;gap:12px;margin-top:18px}
 .app{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow);text-decoration:none;color:inherit;transition:transform .12s}
@@ -38,6 +38,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
 .bolha{width:56px;height:56px;border-radius:14px;border:2px dashed var(--line);display:grid;place-items:center;font-size:28px;font-weight:300;flex:none;color:var(--muted)}
 .instalar{margin-top:20px;width:100%;padding:13px;border:0;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
 .instalar[hidden]{display:none}
+.ver-hoje{display:block;text-align:center;margin-top:22px;padding:13px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--accent);font-weight:700;text-decoration:none}
 .rodape{color:var(--muted);font-size:12.5px;text-align:center;margin-top:24px;line-height:1.5}
 </style>
 </head>
@@ -51,7 +52,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     </div>
   </header>
 
-  <p class="pendencias" id="pendencias" hidden></p>
+  <a class="pendencias" id="pendencias" href="hoje.html" hidden></a>
 
   <div class="lista">
     <a class="app" href="patinhas.html">
@@ -94,6 +95,8 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
   </div>
 
   <button class="instalar" id="instalar" hidden>Instalar Meus apps neste aparelho</button>
+
+  <a class="ver-hoje" href="hoje.html">Ver tudo de hoje ›</a>
 
   <p class="rodape">Cada aplicativo guarda seus dados neste aparelho.<br>Para trocar de app, use o botão “‹ Menu” no topo de cada um.</p>
 </main>
@@ -168,7 +171,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     if (pendencias.aComprar) partes.push(plural(pendencias.aComprar, 'item', 'itens') + ' para comprar na Listas');
     const el = document.getElementById('pendencias');
     el.hidden = !partes.length;
-    el.textContent = partes.length ? 'Pendências: ' + partes.join(' · ') + '.' : '';
+    el.textContent = partes.length ? 'Pendências: ' + partes.join(' · ') + '. Ver tudo ›' : '';
   }
 
   function atualizarResumos() {

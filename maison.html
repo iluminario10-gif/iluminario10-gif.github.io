@@ -2012,6 +2012,9 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
     Store.carregar();
     UI.state.mes = Calc.mesDe(Calc.hojeISO());
     UI.state.tela = 'painel';
+    // Atalhos vindos de fora (ex.: a tela Hoje do menu): maison.html#estoque, #vendas, #compras...
+    const atalhoTela = (location.hash || '').replace('#', '');
+    if (['painel', 'vendas', 'compras', 'estoque', 'produtos', 'config'].includes(atalhoTela)) UI.state.tela = atalhoTela;
     document.getElementById('btn-config').addEventListener('click', () => ir('config'));
 
     document.addEventListener('click', (e) => {

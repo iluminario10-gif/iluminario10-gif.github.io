@@ -399,6 +399,14 @@ button:disabled { opacity: .35; cursor: default; }
 .desfazer button { flex: none; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; padding: 8px 14px; cursor: pointer; }
 .acoes-feitos { margin: 6px 0 10px; }
 .acoes-feitos .btn { width: 100%; }
+/* Comprados antes */
+.antes { padding: 0 0 10px; }
+.antes[hidden] { display: none; }
+.antes-titulo { margin: 0 0 6px; font-size: .85em; color: var(--ink-2); font-weight: 700; }
+.antes-lista { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.antes-lista::-webkit-scrollbar { display: none; }
+.chip-antes { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 12px; font: inherit; font-size: .92em; cursor: pointer; white-space: nowrap; }
+.chip-antes small { color: var(--ink-2); margin-left: 6px; font-weight: 700; }
 </style>
 
 <div class="tela" id="tela-home">
@@ -450,6 +458,7 @@ button:disabled { opacity: .35; cursor: default; }
 
 <div class="composer" id="composer" hidden>
   <div class="sugestoes" id="sugestoes" hidden></div>
+  <div class="antes" id="antes" hidden></div>
   <form class="linha" id="form" autocomplete="off">
     <label class="sr" for="entrada">Adicionar produto</label>
     <input id="entrada" type="text" placeholder="Digite um produto, ex.: ol" enterkeyhint="done" autocapitalize="sentences">
@@ -846,6 +855,7 @@ ICONES_LISTA.casa = [
       if (!tp.corredores.some(c => c.nome === 'Outros')) tp.corredores.push({ nome: 'Outros', cor: 0, ativo: true });
     });
     s.custom = s.custom || [];
+    s.comprados = s.comprados || {};
     s.listas = s.listas || [];
     s.ajustes = Object.assign(b.ajustes, s.ajustes || {});
     s.listas.forEach(l => {
@@ -925,6 +935,7 @@ ICONES_LISTA.casa = [
   let arr = null;
 
   function mostrarTela() {
+    renderAntes();
     $('tela-home').hidden = tela !== 'home';
     $('tela-lista').hidden = tela !== 'lista';
     $('barra-nova').hidden = tela !== 'home';
@@ -943,7 +954,39 @@ ICONES_LISTA.casa = [
     tela = 'home'; listaId = null;
     renderHome(); mostrarTela();
   }
-  function render() { if (tela === 'home') renderHome(); else renderLista(); }
+  function render() { if (tela === 'home') renderHome(); else renderLista(); renderAntes(); }
+
+  // ---------- Comprados antes ----------
+  function registrarCompra(l, it) {
+    const chave = l.tipo + '|' + norm(it.texto);
+    const r = S.comprados[chave] || { texto: it.texto, tipo: l.tipo, n: 0 };
+    r.n++;
+    r.texto = it.texto;
+    r.cat = it.cat;
+    r.ultima = Date.now();
+    S.comprados[chave] = r;
+  }
+  function renderAntes() {
+    const box = $('antes');
+    const l = listaAtual();
+    const mostrar = tela === 'lista' && !!l && !norm($('entrada').value);
+    if (!mostrar) { box.hidden = true; box.innerHTML = ''; return; }
+    const naLista = new Set(l.itens.filter(i => !i.feito).map(i => norm(i.texto)));
+    const top = Object.entries(S.comprados || {})
+      .filter(([, r]) => r.tipo === l.tipo && !naLista.has(norm(r.texto)))
+      .sort((a, b) => (b[1].n - a[1].n) || ((b[1].ultima || 0) - (a[1].ultima || 0)))
+      .slice(0, 8);
+    box.hidden = !top.length;
+    box.innerHTML = top.length
+      ? '<p class="antes-titulo">Comprados antes</p><div class="antes-lista">' + top.map(([k, r]) =>
+          `<button type="button" class="chip-antes" data-antes="${esc(k)}">${esc(r.texto)}<small>${r.n}×</small></button>`).join('') + '</div>'
+      : '';
+  }
+  $('antes').addEventListener('click', e => {
+    const b = e.target.closest('[data-antes]');
+    const r = b && S.comprados[b.dataset.antes];
+    if (r) adicionar(r.texto, r.cat || 'Outros', false);
+  });
 
   function renderHome() {
     const n = S.listas.length;
@@ -1094,6 +1137,7 @@ ICONES_LISTA.casa = [
   function renderSug() {
     const l = listaAtual();
     const q = $('entrada').value;
+    renderAntes();
     const box = $('sugestoes');
     if (!l || !norm(q)) { box.hidden = true; box.innerHTML = ''; return; }
     let h = sugerir(l.tipo, q).map(r =>
@@ -1111,7 +1155,7 @@ ICONES_LISTA.casa = [
   function alternarFeito(l, it, li) {
     if (it.feito) { it.feito = false; save(); return render(); }
     li.classList.add('saindo');
-    setTimeout(() => { it.feito = true; save(); render(); }, reduzido() ? 0 : 240);
+    setTimeout(() => { it.feito = true; registrarCompra(l, it); save(); render(); }, reduzido() ? 0 : 240);
   }
 
   function onLista(e) {
@@ -1767,6 +1811,13 @@ ICONES_LISTA.casa = [
   });
 
   // ---------- Início ----------
+  // Atalhos vindos de fora (ex.: a tela Hoje): #lista=<id> abre a lista; #tipo=<tipo> abre a primeira lista desse tipo.
+  const atalho = /^#(lista|tipo)=(.+)$/.exec(location.hash || '');
+  if (atalho) {
+    const valor = decodeURIComponent(atalho[2]);
+    const alvo = atalho[1] === 'lista' ? S.listas.find(l => l.id === valor) : S.listas.find(l => l.tipo === valor);
+    if (alvo) { listaId = alvo.id; tela = 'lista'; pastaAtual = 'todas'; }
+  }
   aplicarAjustes();
   mostrarTela();
   render();
