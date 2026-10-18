@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Meus apps">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="hub-icon-192.png">
-<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" href="hub-icon-180.png">
 <title>Meus apps</title>
 <style>
 :root{--bg:#F4F1F8;--surface:#FFFFFF;--ink:#241C35;--muted:#6C6283;--line:#E2DBEE;--accent:#7A5FBE;--accent-soft:#EEE8FA;--shadow:0 1px 2px rgba(36,28,53,.05),0 8px 22px rgba(36,28,53,.08);color-scheme:light}
@@ -18,19 +18,24 @@
 html,body{margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-tap-highlight-color:transparent}
 main{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 28px) 16px calc(env(safe-area-inset-bottom) + 28px)}
-header{display:flex;align-items:center;gap:14px;margin-bottom:22px}
-header img{width:52px;height:52px;border-radius:14px;box-shadow:var(--shadow)}
+header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+header img{width:60px;height:60px;border-radius:16px;box-shadow:var(--shadow);flex:none}
 h1{font-size:26px;margin:0;letter-spacing:.2px}
 .sub{color:var(--muted);font-size:14px;margin-top:2px}
-.lista{display:flex;flex-direction:column;gap:12px}
+.pendencias{margin:14px 0 4px;padding:12px 14px;border-radius:14px;background:var(--accent-soft);font-size:14px;line-height:1.45}
+.pendencias[hidden]{display:none}
+.lista{display:flex;flex-direction:column;gap:12px;margin-top:18px}
 .app{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow);text-decoration:none;color:inherit;transition:transform .12s}
 .app:active{transform:scale(.985)}
 .app img{width:56px;height:56px;border-radius:14px;flex:none}
+.app > div{min-width:0}
 .app .t{font-weight:700;font-size:17px}
 .app .d{color:var(--muted);font-size:13.5px;margin-top:2px;line-height:1.35}
+.app .r{color:var(--accent);font-size:13.5px;font-weight:600;margin-top:6px;line-height:1.35}
+.app .r:empty{display:none}
 .app .seta{margin-left:auto;color:var(--accent);font-size:22px;flex:none}
-.app.breve{opacity:.55;pointer-events:none}
-.bolha{width:56px;height:56px;border-radius:14px;background:var(--accent-soft);display:grid;place-items:center;font-size:26px;flex:none}
+.app.vaga{background:transparent;border:2px dashed var(--line);box-shadow:none;pointer-events:none}
+.bolha{width:56px;height:56px;border-radius:14px;border:2px dashed var(--line);display:grid;place-items:center;font-size:28px;font-weight:300;flex:none;color:var(--muted)}
 .instalar{margin-top:20px;width:100%;padding:13px;border:0;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
 .instalar[hidden]{display:none}
 .rodape{color:var(--muted);font-size:12.5px;text-align:center;margin-top:24px;line-height:1.5}
@@ -42,9 +47,11 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     <img src="hub-icon-192.png" alt="">
     <div>
       <h1>Meus apps</h1>
-      <div class="sub">Escolha o aplicativo que quer abrir</div>
+      <div class="sub">Tudo da casa e da loja, em um lugar só</div>
     </div>
   </header>
+
+  <p class="pendencias" id="pendencias" hidden></p>
 
   <div class="lista">
     <a class="app" href="patinhas.html">
@@ -52,6 +59,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
       <div>
         <div class="t">Patinhas em Dia</div>
         <div class="d">Saúde dos gatos: lembretes, peso, consultas e resumo para o veterinário.</div>
+        <div class="r" data-resumo="patinhas"></div>
       </div>
       <span class="seta" aria-hidden="true">›</span>
     </a>
@@ -61,14 +69,25 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
       <div>
         <div class="t">Maison de Lavande</div>
         <div class="d">Vendas, compras, estoque e lucro da loja.</div>
+        <div class="r" data-resumo="maison"></div>
       </div>
       <span class="seta" aria-hidden="true">›</span>
     </a>
 
-    <div class="app breve" aria-disabled="true">
-      <div class="bolha" aria-hidden="true">🛒</div>
+    <a class="app" href="listas.html">
+      <img src="listas-icon-192.png" alt="">
       <div>
-        <div class="t">Mercado</div>
+        <div class="t">Listas</div>
+        <div class="d">Listas de mercado, farmácia, pet shop e casa, com pastas por loja.</div>
+        <div class="r" data-resumo="listas"></div>
+      </div>
+      <span class="seta" aria-hidden="true">›</span>
+    </a>
+
+    <div class="app vaga" aria-disabled="true">
+      <div class="bolha" aria-hidden="true">+</div>
+      <div>
+        <div class="t">Próximo app</div>
         <div class="d">Em breve.</div>
       </div>
     </div>
@@ -76,9 +95,95 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
 
   <button class="instalar" id="instalar" hidden>Instalar Meus apps neste aparelho</button>
 
-  <p class="rodape">Cada aplicativo guarda seus dados neste aparelho.<br>Para trocar de app, use o botão “Menu” no topo.</p>
+  <p class="rodape">Cada aplicativo guarda seus dados neste aparelho.<br>Para trocar de app, use o botão “‹ Menu” no topo de cada um.</p>
 </main>
 <script>
+(function () {
+  'use strict';
+
+  // Os três apps ficam no mesmo endereço, então o menu consegue ler o que cada um guardou.
+  function ler(chave) {
+    try { return JSON.parse(localStorage.getItem(chave)); } catch (e) { return null; }
+  }
+  function hojeISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  // Dias entre hoje e uma data AAAA-MM-DD (negativo = já passou).
+  function diasAte(data) {
+    const [ya, ma, da] = data.split('-').map(Number);
+    const [yh, mh, dh] = hojeISO().split('-').map(Number);
+    return Math.round((Date.UTC(ya, ma - 1, da) - Date.UTC(yh, mh - 1, dh)) / 86400000);
+  }
+  const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
+  const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const pendencias = { atrasados: 0, aComprar: 0 };
+
+  function resumoPatinhas() {
+    const s = ler('patinhas-em-dia-v1');
+    if (!s || !Array.isArray(s.cats) || !s.cats.length) return 'Cadastre o primeiro gato para começar.';
+    let atrasados = 0, proximos = 0;
+    s.cats.forEach((c) => (c.eventos || []).forEach((e) => {
+      if (!e || !e.proxima) return;
+      const d = diasAte(e.proxima);
+      if (d < 0) atrasados++;
+      else if (d <= 7) proximos++;
+    }));
+    pendencias.atrasados = atrasados;
+    const base = plural(s.cats.length, 'gato', 'gatos');
+    if (atrasados) return base + ' · ' + plural(atrasados, 'lembrete atrasado', 'lembretes atrasados');
+    if (proximos) return base + ' · ' + plural(proximos, 'lembrete nos próximos 7 dias', 'lembretes nos próximos 7 dias');
+    return base + ' · tudo em dia';
+  }
+
+  function resumoMaison() {
+    const d = ler('mdl.dados');
+    if (!d || !Array.isArray(d.vendas)) return 'Cadastre os produtos e registre a primeira venda.';
+    const mes = hojeISO().slice(0, 7);
+    let total = 0, lucro = 0, n = 0;
+    d.vendas.forEach((v) => {
+      if (!v || String(v.data || '').slice(0, 7) !== mes) return;
+      const q = Number(v.quantidade) || 0, p = Number(v.precoUnitario) || 0, c = Number(v.custoUnitario) || 0;
+      total += q * p;
+      lucro += q * (p - c);
+      n++;
+    });
+    if (!n) return 'Sem vendas neste mês ainda.';
+    return 'Vendas do mês: ' + BRL.format(total) + ' · lucro ' + BRL.format(lucro);
+  }
+
+  function resumoListas() {
+    const s = ler('lista-mercado.v2');
+    if (!s || !Array.isArray(s.listas) || !s.listas.length) return 'Crie sua primeira lista.';
+    const pendentes = s.listas.reduce((soma, l) => soma + (l.itens || []).filter((i) => i && !i.feito).length, 0);
+    pendencias.aComprar = pendentes;
+    const listas = plural(s.listas.length, 'lista', 'listas');
+    return pendentes ? listas + ' · ' + plural(pendentes, 'item para comprar', 'itens para comprar') : listas + ' · tudo comprado';
+  }
+
+  // Faixa de pendências no topo, só quando há algo a resolver.
+  function mostrarPendencias() {
+    const partes = [];
+    if (pendencias.atrasados) partes.push(plural(pendencias.atrasados, 'lembrete atrasado', 'lembretes atrasados') + ' nos Patinhas');
+    if (pendencias.aComprar) partes.push(plural(pendencias.aComprar, 'item', 'itens') + ' para comprar na Listas');
+    const el = document.getElementById('pendencias');
+    el.hidden = !partes.length;
+    el.textContent = partes.length ? 'Pendências: ' + partes.join(' · ') + '.' : '';
+  }
+
+  function atualizarResumos() {
+    const fontes = { patinhas: resumoPatinhas, maison: resumoMaison, listas: resumoListas };
+    Object.keys(fontes).forEach((k) => {
+      let texto = '';
+      try { texto = fontes[k]() || ''; } catch (e) { texto = ''; }
+      document.querySelectorAll('[data-resumo="' + k + '"]').forEach((el) => { el.textContent = texto; });
+    });
+    try { mostrarPendencias(); } catch (e) { /* a faixa de pendências é opcional */ }
+  }
+
+  atualizarResumos();
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') atualizarResumos(); });
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
@@ -97,6 +202,7 @@ h1{font-size:26px;margin:0;letter-spacing:.2px}
     promptInstalar.prompt();
     promptInstalar.userChoice.finally(function () { promptInstalar = null; document.getElementById('instalar').hidden = true; });
   });
+})();
 </script>
 </body>
 </html>

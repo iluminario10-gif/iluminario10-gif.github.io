@@ -258,6 +258,9 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   .calc-box { grid-template-columns: 1fr; }
 }
 
+/* Meta mensal */
+.meta-barra { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.meta-preench { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #C9B8F0); transition: width 400ms ease; }
 </style>
 <title>Maison de Lavande</title>
 </head>
@@ -917,6 +920,38 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
       '<div class="footer-note" style="margin:8px 0 0">Margem: variação em pontos percentuais (' + (cmp.variacao.margemPontos >= 0 ? '+' : '') + UI.percentual(cmp.variacao.margemPontos) + ').</div>';
   }
 
+  // Meta do mês: barra de progresso e, no mês atual, projeção pelo ritmo dos dias já passados.
+  function cardMeta(mes, faturamento) {
+    const meta = Number(Store.get().configuracoes.metaMensal) || 0;
+    const titulo = '<div class="card-title"><h3>Meta de ' + esc(Calc.nomeMes(mes)) + '</h3>' +
+      (meta ? '<span class="muted small">' + dinheiro(meta) + '</span>' : '') + '</div>';
+    if (!meta) {
+      return '<div class="card">' + titulo +
+        '<p class="muted small" style="margin:0 0 10px">Defina uma meta de faturamento para acompanhar o mês aqui.</p>' +
+        '<button class="btn btn-sm" data-act="app.ir" data-tela="config">Definir meta</button></div>';
+    }
+    const pct = (faturamento / meta) * 100;
+    const hoje = Calc.hojeISO();
+    const ehAtual = mes === Calc.mesDe(hoje);
+    const falta = meta - faturamento;
+    const texto = pct >= 100 ? 'Meta batida. Parabéns!' : 'Faltam ' + dinheiro(falta) + ' para bater a meta.';
+    let projecao = '';
+    if (ehAtual) {
+      const diaHoje = Number(hoje.slice(8, 10));
+      const diasNoMes = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
+      if (diaHoje >= 3 && faturamento > 0) {
+        const previsto = (faturamento / diaHoje) * diasNoMes;
+        projecao = '<div class="muted small" style="margin-top:10px">No ritmo atual, o mês fecha em <strong>' +
+          dinheiro(previsto) + '</strong> (' + UI.percentual((previsto / meta) * 100) + ' da meta).</div>';
+      }
+    }
+    return '<div class="card">' + titulo +
+      '<div class="meta-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(Math.min(100, pct)) + '" aria-label="Progresso da meta do mês">' +
+        '<div class="meta-preench" style="width:' + Math.min(100, pct).toFixed(1) + '%"></div></div>' +
+      '<div class="row spread" style="margin-top:8px"><strong>' + UI.percentual(pct) + '</strong><span class="muted small">' + texto + '</span></div>' +
+      projecao + '</div>';
+  }
+
   function render() {
     const s = Store.get();
     const mes = UI.state.mes;
@@ -946,6 +981,7 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
         kpi('Ticket médio', dinheiro(atual.ticketMedio), atual.pedidos + ' pedido(s) · ' + quantidade(atual.unidades) + ' un') +
       '</div>' +
 
+      cardMeta(mes, atual.faturamento) +
       '<div class="card">' +
         '<div class="card-title"><h3>Últimos 12 meses</h3></div>' +
         (temVendas
@@ -1673,12 +1709,21 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   const Calc = root.Calc, Store = root.Store, UI = root.UI;
   const { esc } = UI;
 
-  const VERSAO_ATUAL = '1.0';
+  const VERSAO_ATUAL = '1.2';
 
   const NOVIDADES = [
     {
-      versao: '1.0',
+      versao: '1.2',
       status: 'Versão atual',
+      itens: [
+        'Meta mensal de faturamento, com barra de progresso no Painel. Defina em Configurações.',
+        'Projeção do mês: no ritmo atual, quanto o mês deve fechar.',
+        'Próximas: editar compras e ajustes, filtrar vendas e importar planilhas (CSV).',
+      ],
+    },
+    {
+      versao: '1.0',
+      status: 'Versão anterior',
       itens: [
         'Cadastro fixo de produtos (custo, acréscimo, preço, estoque inicial e mínimo).',
         'Vendas com data, produto, quantidade, valor, forma de pagamento; total, custo, lucro e margem são calculados sozinhos.',
@@ -1686,17 +1731,6 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
         'Estoque automático (compras + ajustes − vendas), cobertura em dias e sugestão de quantidade para repor.',
         'Painel com indicadores do mês, gráfico dos últimos 12 meses, mais vendidos, formas de pagamento e comparação entre dois períodos.',
         'Backup em arquivo, exportação de vendas para planilha e uso no Chrome e no Android.',
-      ],
-    },
-    {
-      versao: '1.2',
-      status: 'Planejada',
-      itens: [
-        'Editar e excluir compras e ajustes de estoque.',
-        'Filtrar vendas por produto e forma de pagamento.',
-        'Meta mensal de faturamento com barra de progresso no Painel.',
-        'Importar planilhas (CSV) para trazer o histórico antigo de uma vez.',
-        'Avisos de reposição ao abrir o app, sem precisar entrar no Estoque.',
       ],
     },
   ];
@@ -1793,6 +1827,10 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
       '<div class="card"><div class="card-title"><h3>Loja</h3></div>' +
         '<div class="field"><label for="cfg-nome">Nome exibido no painel</label>' +
         '<input id="cfg-nome" value="' + esc(cfg.nomeLoja) + '" data-act-change="config.nome"></div></div>' +
+      '<div class="card"><div class="card-title"><h3>Meta do mês</h3></div>' +
+        '<div class="field"><label for="cfg-meta">Meta de faturamento por mês (R$)</label>' +
+        '<input id="cfg-meta" inputmode="decimal" placeholder="Ex.: 3000" value="' + (cfg.metaMensal ? esc(String(cfg.metaMensal).replace('.', ',')) : '') + '"></div>' +
+        '<p class="muted small" style="margin:0">Aparece no Painel com barra de progresso e projeção do mês.</p></div>' +
 
       '<div class="card"><div class="card-title"><h3>Backup e planilhas</h3></div>' +
         '<p class="muted small" style="margin-top:0">Os dados ficam salvos neste aparelho e navegador. Faça um backup de vez em quando.</p>' +
@@ -1821,6 +1859,14 @@ main.view { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); max-wid
   function depois(main) {
     const nome = main.querySelector('#cfg-nome');
     if (nome) nome.addEventListener('change', () => { Store.setConfig({ nomeLoja: nome.value.trim() || 'Maison de Lavande' }); UI.toast('Nome salvo'); });
+    const meta = main.querySelector('#cfg-meta');
+    if (meta) meta.addEventListener('change', () => {
+      const v = String(meta.value || '').trim();
+      const n = v ? Number(v.replace(/\./g, '').replace(',', '.')) : 0;
+      if (v && (!isFinite(n) || n < 0)) { UI.toast('Digite só números, ex.: 3000'); return; }
+      Store.setConfig({ metaMensal: n > 0 ? Math.round(n * 100) / 100 : 0 });
+      UI.toast(n > 0 ? 'Meta salva' : 'Meta removida');
+    });
   }
 
   function acao(nome, el) {

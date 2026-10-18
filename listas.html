@@ -1,0 +1,1775 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Listas</title>
+<link rel="apple-touch-icon" href="listas-icon-180.png">
+<meta name="theme-color" content="#2F7D54">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Listas">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@400..800&family=Caveat:wght@500..700&family=Lexend:wght@400..700&family=Literata:wght@400..700&display=swap">
+<style>
+/* Plano de design
+   Tela inicial: cartões de listas, cada um com o tipo, o resumo e uma barra de
+   progresso. Dentro da lista: placas de corredor (faixa sólida com o número),
+   produtos como cartões tingidos pela cor do corredor e a quantidade grande à
+   direita. Movimento só como resposta ao toque: a alça segue o dedo, os outros
+   itens abrem espaço e o item solto assenta no lugar.
+   Cores: --bg, --surface, --ink, --ink-2, --line, --accent (escolhido pela
+   pessoa), --promo (amarelo, só encarte), --danger.
+   Tipos: Bricolage Grotesque em títulos e números; Atkinson Hyperlegible no texto. */
+
+:root {
+  --bg: #F1F5EF; --surface: #FFFFFF; --ink: #13201A; --ink-2: #4F5F55; --line: #CFD9CF;
+  --accent: #2F7D54; --on-accent: #FFFFFF; --promo: #FFD23F; --promo-ink: #2A2100; --danger: #B3261E;
+  --radius: 6px; --base: 17px; --scale: 1;
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1411; --surface: #17201B; --ink: #E7EFE9; --ink-2: #A3B4A9; --line: #2D3D34; --danger: #FF8A80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1411; --surface: #17201B; --ink: #E7EFE9; --ink-2: #A3B4A9; --line: #2D3D34; --danger: #FF8A80;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { height: 100%; }
+body {
+  margin: 0; min-height: 100%; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: calc(var(--base) * var(--scale)); line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--bg);
+}
+h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.1; text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:active { transform: scale(.97); }
+button:disabled { opacity: .35; cursor: default; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ajuda { margin: 0; color: var(--ink-2); font-size: .92em; }
+.rotulo { font-weight: 700; }
+.ic { width: 22px; height: 22px; flex: none; }
+.num { font-family: var(--font-display); font-weight: 800; line-height: 1; min-width: 1.2em; text-align: center; color: var(--ink-2); }
+
+/* Telas */
+.tela.entrar { animation: entrarTela 280ms cubic-bezier(.2, .8, .2, 1) both; }
+.topo {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-top: 14px; padding-bottom: 12px;
+}
+.topo h1 { font-size: calc(var(--base) * 1.9); font-weight: 800; letter-spacing: -.02em; }
+.topo-lista h1 { font-size: calc(var(--base) * 1.45); overflow-wrap: anywhere; }
+.titulo-lista { flex: 1; min-width: 0; }
+.resumo { margin: 6px 0 0; color: var(--ink-2); }
+.icone {
+  flex: none; width: 48px; height: 48px; display: grid; place-items: center;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.vazio { margin-top: 40px; color: var(--ink-2); text-align: center; text-wrap: balance; }
+
+/* Cartões de listas */
+.cartoes { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.cartao {
+  display: flex; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden;
+}
+.abrir {
+  flex: 1; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px;
+  align-items: center; padding: 14px; border: 0; background: none; text-align: left;
+}
+.txt { display: grid; gap: 4px; min-width: 0; }
+.txt .nome { font-family: var(--font-display); font-weight: 700; font-size: 1.15em; overflow-wrap: anywhere; }
+.txt .sub { color: var(--ink-2); font-size: .92em; }
+.barra { display: block; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.barra span { display: block; height: 100%; background: var(--accent); transition: width 400ms cubic-bezier(.2, .8, .2, 1); }
+.mais {
+  width: 56px; flex: none; border: 0; border-left: 1px solid var(--line);
+  background: none; display: grid; place-items: center; color: var(--ink-2);
+}
+.ico-tipo {
+  width: 48px; height: 48px; display: grid; place-items: center; flex: none;
+  border-radius: var(--radius); background: var(--ibg, var(--accent)); color: var(--ifg, var(--on-accent));
+}
+.barra-baixo {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding-top: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.barra-baixo[hidden] { display: none; }
+.btn {
+  min-height: 48px; padding: 0 18px; border: 0; border-radius: var(--radius);
+  background: var(--accent); color: var(--on-accent); font-weight: 800; white-space: nowrap;
+}
+.btn.grande { width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1.1em; }
+.btn.sec { background: none; color: var(--ink); border: 1px solid var(--line); }
+.btn.perigo { color: var(--danger); }
+
+/* Seletor de modo e dica */
+.seg {
+  display: flex; gap: 3px; padding: 3px; margin-top: 4px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.seg button {
+  flex: 1; min-height: 44px; padding: 0 10px; border: 0; border-radius: 4px;
+  background: none; font-weight: 700; color: var(--ink-2);
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.dica {
+  display: grid; gap: 10px; margin: 14px 0 4px; padding: 12px 14px;
+  border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-2);
+}
+.dica p { margin: 0; }
+.dica[hidden] { display: none; }
+
+/* Lista de itens */
+.lista { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; position: relative; }
+.item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 4px;
+  padding: 0 4px; min-width: 0; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--tint) 17%, var(--surface));
+  transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+}
+.item.encarte { background: color-mix(in srgb, var(--promo) 30%, var(--surface)); }
+.item.arrastando {
+  transition: none; z-index: 3; position: relative;
+  background: color-mix(in srgb, var(--tint) 30%, var(--surface));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
+}
+.item.feito { opacity: .8; }
+.check { width: 48px; height: 48px; padding: 0; border: 0; background: none; display: grid; place-items: center; }
+.bola {
+  position: relative; display: block; width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--ink-2); background: var(--surface);
+}
+.feito .bola { background: var(--accent); border-color: var(--accent); }
+.feito .bola::after {
+  content: ""; position: absolute; left: 8px; top: 3px; width: 7px; height: 13px;
+  border: solid var(--on-accent); border-width: 0 3px 3px 0; transform: rotate(45deg);
+}
+.corpo {
+  display: grid; gap: 4px; justify-items: start; text-align: left; min-width: 0; min-height: 52px;
+  padding: 10px 4px; border: 0; background: none;
+}
+.nome { font-weight: 700; font-size: 1.02em; overflow-wrap: anywhere; }
+.feito .nome { color: var(--ink-2); text-decoration: line-through; text-decoration-thickness: 2px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  font-size: .78em; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  color: var(--ink-2); background: var(--surface); border: 1px solid var(--line);
+}
+.tag.promo { background: var(--promo); color: var(--promo-ink); border-color: var(--promo); }
+.obs { color: var(--ink-2); font-size: .92em; overflow-wrap: anywhere; }
+.grip {
+  width: 44px; height: 52px; padding: 0; border: 0; background: none; display: grid; place-items: center;
+  color: var(--ink-2); touch-action: none; cursor: grab;
+}
+.grip svg { width: 14px; height: 22px; fill: currentColor; }
+.qtd-ctl {
+  display: inline-flex; align-items: center; height: 44px; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+}
+.qtd-ctl.grande { height: 56px; }
+.qb { width: 40px; height: 100%; border: 0; background: none; font-size: 1.4em; font-weight: 700; }
+.qtd-ctl.grande .qb { width: 60px; }
+.qv {
+  min-width: 2.4em; text-align: center; font-family: var(--font-display); font-weight: 800;
+  font-size: 1.3em; font-variant-numeric: tabular-nums;
+}
+.qtd-ctl.grande .qv { font-size: 1.8em; }
+.qtd-fixa { font-family: var(--font-display); font-weight: 700; color: var(--ink-2); min-width: 2em; text-align: center; }
+
+/* Corredores */
+.corr { margin-top: 20px; }
+.placa {
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 12px;
+  border-radius: var(--radius); background: var(--tint); color: #101A14;
+}
+.placa .num { color: #101A14; font-size: 1.9em; }
+.placa h2 { flex: 1; min-width: 0; font-size: 1.1em; font-weight: 700; }
+.placa.neutra { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.qtd-corr { font-weight: 700; font-size: .9em; }
+.fora .placa h2 { font-size: 1em; }
+.feitos { margin-top: 24px; }
+.feitos h2 { font-size: 1.1em; color: var(--ink-2); margin-bottom: 4px; }
+.feitos .item { opacity: .8; }
+.corr-lista { display: grid; margin-top: 10px; }
+.corr-linha {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--line);
+}
+.corr-linha .corr-nome { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.corr-linha.inativo .corr-nome { color: var(--ink-2); text-decoration: line-through; }
+.bolinha { width: 44px; height: 44px; padding: 0; border: 0; background: none; display: grid; place-items: center; }
+.bolinha span { width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--line); }
+.chave {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px 0 14px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--bg); font-weight: 700;
+}
+.chave .knob { width: 22px; height: 22px; border-radius: 50%; background: var(--ink-2); }
+.chave[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.chave[aria-checked="true"] .knob { background: var(--on-accent); }
+.seta {
+  width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg); font-size: 1.1em;
+}
+.excluir { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--danger); font-weight: 700; }
+
+/* Campo de digitar e sugestões */
+.composer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.composer[hidden] { display: none; }
+.linha { display: flex; gap: 8px; margin: 0; }
+.linha input, .campo input[type="text"], .campo textarea, .campo select {
+  min-width: 0; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface);
+  font-size: max(16px, calc(var(--base) * var(--scale)));
+}
+.linha input { flex: 1; min-height: 52px; padding: 0 14px; }
+.linha input::placeholder, .campo input::placeholder { color: var(--ink-2); }
+.campo textarea { min-height: 72px; resize: vertical; }
+.sugestoes {
+  position: absolute; left: 0; right: 0; bottom: 100%; max-height: 58vh; overflow: auto;
+  padding-top: 6px; padding-bottom: 6px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface); border-top: 1px solid var(--line);
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, .12);
+}
+.sugestoes[hidden] { display: none; }
+.sug { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.sug-prod {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  width: 100%; min-height: 44px; padding: 0; border: 0; background: none;
+  text-align: left; font-weight: 700; font-size: 1.02em;
+}
+.sug-prod .cat { font-weight: 400; font-size: .8em; color: var(--ink-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip {
+  min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg); font-size: .92em;
+}
+.novo { display: grid; gap: 8px; padding: 12px 0 4px; }
+.novo label { color: var(--ink-2); font-size: .92em; }
+.linha2 { display: flex; gap: 8px; }
+.linha2 select { flex: 1; min-width: 0; min-height: 48px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+
+/* Folhas */
+.veu { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .4); animation: fundo 200ms ease-out; }
+.veu[hidden] { display: none; }
+.folha {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 88vh; overflow: auto;
+  padding-top: 12px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface); color: var(--ink); border-radius: 14px 14px 0 0;
+  animation: subir 260ms cubic-bezier(.2, .8, .2, 1);
+}
+.folha[hidden] { display: none; }
+.folha:focus { outline: none; }
+.folha-topo {
+  position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding-bottom: 8px; background: var(--surface);
+}
+.folha-topo h2 { font-size: 1.5em; font-weight: 800; overflow-wrap: anywhere; }
+.campo { display: grid; gap: 8px; margin: 18px 0; }
+.campo > h3, .campo > label { font-weight: 700; }
+.check-linha { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.check-linha input { width: 24px; height: 24px; accent-color: var(--accent); }
+.cores { display: flex; flex-wrap: wrap; gap: 10px; }
+.cores button {
+  width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--surface);
+  background: var(--c); box-shadow: 0 0 0 1px var(--line);
+}
+.cores button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ink); }
+.fontes { display: grid; gap: 8px; }
+.fontes button {
+  display: grid; gap: 2px; min-height: 52px; padding: 8px 12px; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+}
+.fontes button[aria-pressed="true"] { border: 2px solid var(--ink); }
+.fontes .f-nome { font-size: 1.1em; font-weight: 700; }
+.fontes small { color: var(--ink-2); font-size: .85em; }
+.tamanho { display: flex; align-items: center; gap: 12px; }
+.tamanho input { flex: 1; min-height: 44px; accent-color: var(--accent); }
+.tamanho .pq { font-size: 14px; }
+.tamanho .gr { font-size: 24px; font-weight: 700; }
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.acoes .btn { flex: 1; }
+.tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tipo-op {
+  display: grid; justify-items: start; gap: 10px; min-height: 104px; padding: 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+  text-align: left; font-weight: 700;
+}
+.tipo-op[aria-pressed="true"] { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.tipo-op.novo-tipo { border-style: dashed; color: var(--ink-2); }
+.menu-acoes { display: grid; gap: 8px; margin-top: 12px; }
+.menu-acoes button {
+  min-height: 52px; padding: 0 14px; text-align: left; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--bg); font-weight: 700;
+}
+.menu-acoes .perigo { color: var(--danger); }
+
+/* Ícones das listas, pastas e seletor de ícone */
+.ico-tipo .ic { width: 26px; height: 26px; }
+.ico-btn { padding: 0; border: 0; cursor: pointer; }
+.linha-titulo { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.linha-titulo h1 { min-width: 0; }
+.topo-lista .ico-btn { width: 42px; height: 42px; }
+.topo-lista .ico-btn .ic { width: 22px; height: 22px; }
+.ico-tipo.grande { width: 84px; height: 84px; border-radius: 16px; }
+.ico-tipo.grande .ic { width: 46px; height: 46px; }
+.previa { display: flex; align-items: center; gap: 16px; margin-top: 8px; }
+.previa-txt { display: grid; gap: 4px; min-width: 0; }
+.previa-txt strong { font-family: var(--font-display); font-size: 1.15em; overflow-wrap: anywhere; }
+.grade-icones { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
+.ic-op {
+  min-height: 60px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--ink);
+}
+.ic-op .ic { width: 30px; height: 30px; }
+.ic-op[aria-pressed="true"] { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.cores button.auto { background: linear-gradient(135deg, var(--accent) 50%, var(--bg) 50%); }
+.pastas { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.pastas::-webkit-scrollbar { display: none; }
+.pasta-op {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-weight: 700;
+}
+.pasta-op small { font-size: .85em; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pasta-op[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.pasta-op[aria-pressed="true"] small { color: var(--bg); opacity: .75; }
+.pasta-op.novo { border-style: dashed; color: var(--accent); }
+.pasta-ed {
+  flex: none; min-width: 44px; min-height: 44px; margin-left: -4px; padding: 0;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-2); font-size: 1em;
+}
+.tag.pasta { background: var(--bg); }
+
+/* Animações: só respondem a ação da pessoa */
+@keyframes entrarTela { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes entrar { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes sair { to { opacity: 0; transform: translateX(28px); } }
+@keyframes pulsar { 0% { transform: scale(1); } 35% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes subir { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fundo { from { opacity: 0; } to { opacity: 1; } }
+.item.entrar { animation: entrar 280ms cubic-bezier(.2, .8, .2, 1) both; }
+.item.saindo { animation: sair 240ms ease-in forwards; }
+.qv.pulsar { animation: pulsar 320ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+
+
+/* Meus apps: link para o menu do hub */
+.menu-hub { display: inline-block; color: var(--accent); font-weight: 700; font-size: .92em; text-decoration: none; margin-bottom: 4px; padding: 4px 0; }
+.menu-hub.bloco { display: block; text-align: center; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; background: var(--surface); }
+/* Desfazer e tirar comprados */
+.desfazer { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(104px + env(safe-area-inset-bottom, 0px)); z-index: 8;
+  display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--bg); padding: 8px 8px 8px 16px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.desfazer[hidden] { display: none; }
+.desfazer span { min-width: 0; overflow-wrap: anywhere; font-size: .95em; }
+.desfazer button { flex: none; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; padding: 8px 14px; cursor: pointer; }
+.acoes-feitos { margin: 6px 0 10px; }
+.acoes-feitos .btn { width: 100%; }
+</style>
+
+<div class="tela" id="tela-home">
+  <header class="topo">
+    <div>
+      <a class="menu-hub" href="index.html">‹ Menu</a>
+      <h1>Listas</h1>
+      <p class="resumo" id="resumo-home" aria-live="polite"></p>
+    </div>
+    <button type="button" class="icone" id="btn-ajustes" aria-label="Ajustes" aria-haspopup="dialog"></button>
+  </header>
+  <ul class="cartoes" id="cartoes"></ul>
+  <p class="vazio" id="vazio-home" hidden>Você ainda não tem listas. Toque em Nova lista para começar.</p>
+</div>
+
+<div class="tela" id="tela-lista" hidden>
+  <header class="topo topo-lista">
+    <button type="button" class="icone" id="btn-voltar" aria-label="Voltar para as listas"></button>
+    <div class="titulo-lista">
+      <div class="linha-titulo">
+        <button type="button" class="ico-tipo ico-btn" id="btn-icone-lista" aria-label="Editar ícone da lista"></button>
+        <h1 id="titulo-lista"></h1>
+      </div>
+      <p class="resumo" id="resumo" aria-live="polite"></p>
+    </div>
+    <button type="button" class="icone" id="btn-menu-lista" aria-label="Opções da lista" aria-haspopup="dialog"></button>
+  </header>
+  <div class="seg" role="group" aria-label="Ordem da lista">
+    <button type="button" data-modo="manual" aria-pressed="true">Ordem manual</button>
+    <button type="button" data-modo="corredor" aria-pressed="false">Por corredor</button>
+  </div>
+  <div class="pastas" id="pastas" role="group" aria-label="Pastas da lista"></div>
+  <div class="dica" id="dica" hidden>
+    <p>Esta lista é um exemplo. Digite abaixo para começar a sua.</p>
+    <div class="acoes"><button type="button" class="btn sec" id="btn-dica-limpar">Esvaziar a lista</button></div>
+  </div>
+  <div id="conteudo"></div>
+  <p class="vazio" id="vazio" hidden>Sua lista está vazia. Digite um produto embaixo. Ao digitar “ol”, aparecem óleo e as variações.</p>
+  <section class="feitos" id="sec-feitos" hidden>
+    <h2>No carrinho</h2>
+    <div class="acoes-feitos"><button type="button" class="btn sec" id="btn-tirar-feitos">Tirar os comprados da lista</button></div>
+    <ul class="lista" id="feitos"></ul>
+  </section>
+</div>
+
+<div class="barra-baixo" id="barra-nova">
+  <button type="button" class="btn grande" id="btn-nova"></button>
+</div>
+
+<div class="composer" id="composer" hidden>
+  <div class="sugestoes" id="sugestoes" hidden></div>
+  <form class="linha" id="form" autocomplete="off">
+    <label class="sr" for="entrada">Adicionar produto</label>
+    <input id="entrada" type="text" placeholder="Digite um produto, ex.: ol" enterkeyhint="done" autocapitalize="sentences">
+    <button class="btn" type="submit">Adicionar</button>
+  </form>
+</div>
+
+<div class="desfazer" id="desfazer" role="status" aria-live="polite" hidden>
+  <span id="desfazer-texto"></span>
+  <button type="button" id="desfazer-botao">Desfazer</button>
+</div>
+<div class="veu" id="veu" hidden></div>
+
+<section class="folha" id="folha-ajustes" role="dialog" aria-modal="true" aria-labelledby="t-aj" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-aj">Ajustes</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo">
+    <h3>Tema</h3>
+    <div class="seg">
+      <button type="button" data-tema="sistema" aria-pressed="true">Sistema</button>
+      <button type="button" data-tema="claro" aria-pressed="false">Claro</button>
+      <button type="button" data-tema="escuro" aria-pressed="false">Escuro</button>
+    </div>
+  </div>
+  <div class="campo"><a class="menu-hub bloco" href="index.html">‹ Voltar ao menu de apps</a></div>
+  <div class="campo"><h3>Cor de destaque</h3><div class="cores" id="cores-destaque"></div></div>
+  <div class="campo"><h3>Fonte</h3><div class="fontes" id="fontes"></div></div>
+  <div class="campo">
+    <h3>Tamanho da letra</h3>
+    <div class="tamanho">
+      <span class="pq" aria-hidden="true">A</span>
+      <input type="range" id="tamanho" min="14" max="24" step="1" aria-label="Tamanho da letra">
+      <span class="gr" aria-hidden="true">A</span>
+    </div>
+  </div>
+</section>
+
+<section class="folha" id="folha-nova-lista" role="dialog" aria-modal="true" aria-labelledby="t-nova" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-nova">Nova lista</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo"><h3>Tipo de lista</h3><div class="tipos" id="tipos-escolha"></div></div>
+  <div class="campo"><label for="nova-nome">Nome da lista</label><input id="nova-nome" type="text"></div>
+  <div class="acoes"><button type="button" class="btn" id="nova-criar">Criar lista</button></div>
+</section>
+
+<section class="folha" id="folha-novo-tipo" role="dialog" aria-modal="true" aria-labelledby="t-tipo" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-tipo">Novo tipo de lista</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo"><label for="tipo-nome">Nome do tipo</label><input id="tipo-nome" type="text" placeholder="Ex.: Papelaria"></div>
+  <div class="campo">
+    <label for="tipo-corredores">Corredores</label>
+    <textarea id="tipo-corredores" rows="4" placeholder="Um por linha, ex.: Papéis, Canetas, Cadernos"></textarea>
+    <p class="ajuda">Você pode criar, ativar e desativar corredores depois.</p>
+  </div>
+  <div class="acoes"><button type="button" class="btn" id="tipo-criar">Criar tipo</button></div>
+</section>
+
+<section class="folha" id="folha-corredores" role="dialog" aria-modal="true" aria-labelledby="corr-titulo" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="corr-titulo">Corredores</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <p class="ajuda">Corredores desativados saem da ordem por corredor. Os itens deles continuam na lista, no fim.</p>
+  <div class="corr-lista" id="corr-lista"></div>
+  <div class="campo">
+    <h3>Novo corredor</h3>
+    <input id="corr-nome" type="text" placeholder="Nome do corredor" aria-label="Nome do novo corredor">
+    <div class="cores" id="corr-cores"></div>
+    <div class="acoes"><button type="button" class="btn" id="corr-add">Adicionar corredor</button></div>
+  </div>
+</section>
+
+<section class="folha" id="folha-menu" role="dialog" aria-modal="true" aria-labelledby="t-menu" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-menu">Opções da lista</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="menu-acoes">
+    <button type="button" data-acao="icone" data-rotulo="Editar ícone">Editar ícone</button>
+    <button type="button" data-acao="copiar" data-rotulo="Compartilhar lista">Compartilhar lista</button>
+    <button type="button" data-acao="renomear" data-rotulo="Renomear">Renomear</button>
+    <button type="button" data-acao="corredores" data-rotulo="Corredores deste tipo">Corredores deste tipo</button>
+    <button type="button" data-acao="tirar" data-rotulo="Tirar os comprados">Tirar os comprados</button>
+    <button type="button" data-acao="esvaziar" data-rotulo="Esvaziar a lista">Esvaziar a lista</button>
+    <button type="button" class="perigo" data-acao="excluir" data-rotulo="Excluir lista">Excluir lista</button>
+  </div>
+</section>
+
+<section class="folha" id="folha-nome" role="dialog" aria-modal="true" aria-labelledby="t-nome" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-nome">Nome da lista</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo"><label for="nome-valor">Nome</label><input id="nome-valor" type="text"></div>
+  <div class="acoes"><button type="button" class="btn" id="nome-salvar">Salvar nome</button></div>
+</section>
+
+<section class="folha" id="folha-item" role="dialog" aria-modal="true" aria-labelledby="t-it" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-it">Editar item</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo"><label for="ed-texto">Produto</label><input id="ed-texto" type="text"></div>
+  <div class="campo">
+    <span class="rotulo">Quantidade</span>
+    <div class="qtd-ctl grande">
+      <button type="button" class="qb" id="ed-menos" aria-label="Diminuir a quantidade">−</button>
+      <span class="qv" id="ed-qtd">1</span>
+      <button type="button" class="qb" id="ed-mais" aria-label="Aumentar a quantidade">+</button>
+    </div>
+  </div>
+  <div class="campo"><label for="ed-cat">Corredor</label><select id="ed-cat"></select></div>
+  <div class="campo" id="ed-pasta-campo"><label for="ed-pasta">Pasta</label><select id="ed-pasta"></select></div>
+  <div class="campo"><label class="check-linha"><input type="checkbox" id="ed-encarte"> Está no encarte</label></div>
+  <div class="campo"><label for="ed-obs">Comentário</label><textarea id="ed-obs" rows="2" placeholder="Ex.: marca de preferência"></textarea></div>
+  <div class="acoes"><button type="button" class="btn sec" id="ed-subir">Subir</button><button type="button" class="btn sec" id="ed-descer">Descer</button></div>
+  <div class="acoes"><button type="button" class="btn" id="ed-salvar">Salvar</button><button type="button" class="btn sec perigo" id="ed-remover">Remover</button></div>
+</section>
+
+<section class="folha" id="folha-icone" role="dialog" aria-modal="true" aria-labelledby="t-icone" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-icone">Ícone da lista</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="previa" id="ic-previa"></div>
+  <div class="campo"><h3>Desenho</h3><div class="grade-icones" id="ic-desenho"></div></div>
+  <div class="campo"><h3>Cor de fundo</h3><div class="cores" id="ic-fundo"></div></div>
+  <div class="campo">
+    <h3>Cor do desenho</h3>
+    <div class="seg" id="ic-cor" role="group" aria-label="Cor do desenho">
+      <button type="button" data-ic-cor="auto" aria-pressed="true">Automática</button>
+      <button type="button" data-ic-cor="branco" aria-pressed="false">Branco</button>
+      <button type="button" data-ic-cor="preto" aria-pressed="false">Preto</button>
+    </div>
+  </div>
+  <div class="acoes"><button type="button" class="btn sec" id="ic-padrao">Usar o padrão</button><button type="button" class="btn" id="ic-salvar">Salvar ícone</button></div>
+</section>
+
+<section class="folha" id="folha-copia" role="dialog" aria-modal="true" aria-labelledby="t-copia" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-copia">Lista em texto</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo"><label for="copia-texto">Para mandar no WhatsApp</label><textarea id="copia-texto" rows="10" readonly></textarea></div>
+  <div class="acoes"><button type="button" class="btn" id="copia-botao">Copiar texto</button></div>
+</section>
+
+<section class="folha" id="folha-pasta" role="dialog" aria-modal="true" aria-labelledby="t-pasta" tabindex="-1" hidden>
+  <header class="folha-topo"><h2 id="t-pasta">Nova pasta</h2><button type="button" class="btn sec" data-fechar>Fechar</button></header>
+  <div class="campo"><label for="pasta-nome">Nome da pasta</label><input id="pasta-nome" type="text" placeholder="Ex.: Guanabara"></div>
+  <div class="campo">
+    <h3>Sugestões</h3>
+    <div class="chips" id="pasta-sug">
+      <button type="button" class="chip" data-sug="Guanabara">Guanabara</button>
+      <button type="button" class="chip" data-sug="Açaí">Açaí</button>
+      <button type="button" class="chip" data-sug="Rede Economia">Rede Economia</button>
+      <button type="button" class="chip" data-sug="Mundial">Mundial</button>
+    </div>
+  </div>
+  <p class="ajuda">Os itens ficam na pasta em que foram adicionados. Excluir uma pasta não apaga os itens: eles voltam para “Sem pasta”.</p>
+  <div class="acoes"><button type="button" class="btn" id="pasta-salvar">Salvar pasta</button></div>
+  <div class="acoes"><button type="button" class="btn sec perigo" id="pasta-excluir">Excluir pasta</button></div>
+</section>
+
+<script>
+const BANCOS = {"mercado": [{"categoria": "Hortifruti", "produtos": [{"nome": "Alface", "variacoes": ["Alface crespa", "Alface americana", "Alface roxa", "Alface lisa"]}, {"nome": "Tomate", "variacoes": ["Tomate italiano", "Tomate cereja", "Tomate débora", "Tomate caqui"]}, {"nome": "Cebola", "variacoes": ["Cebola branca", "Cebola roxa", "Cebola pera"]}, {"nome": "Alho", "variacoes": ["Alho graúdo", "Alho descascado", "Alho-poró"]}, {"nome": "Batata", "variacoes": ["Batata inglesa", "Batata doce", "Batata baroa", "Batatinha"]}, {"nome": "Cenoura", "variacoes": []}, {"nome": "Abobrinha", "variacoes": ["Abobrinha italiana", "Abobrinha menina"]}, {"nome": "Abóbora", "variacoes": ["Abóbora cabotiá", "Abóbora moranga", "Abóbora japonesa"]}, {"nome": "Chuchu", "variacoes": []}, {"nome": "Pepino", "variacoes": ["Pepino japonês", "Pepino caipira"]}, {"nome": "Pimentão", "variacoes": ["Pimentão verde", "Pimentão vermelho", "Pimentão amarelo"]}, {"nome": "Pimenta", "variacoes": ["Pimenta dedo-de-moça", "Pimenta malagueta", "Pimenta biquinho", "Pimenta jalapeño"]}, {"nome": "Brócolis", "variacoes": ["Brócolis ninja", "Brócolis comum"]}, {"nome": "Couve-flor", "variacoes": []}, {"nome": "Repolho", "variacoes": ["Repolho branco", "Repolho roxo", "Repolho verde"]}, {"nome": "Couve", "variacoes": ["Couve manteiga", "Couve-de-folha"]}, {"nome": "Espinafre", "variacoes": []}, {"nome": "Rúcula", "variacoes": []}, {"nome": "Agrião", "variacoes": []}, {"nome": "Cheiro-verde", "variacoes": ["Salsinha", "Cebolinha", "Coentro"]}, {"nome": "Milho verde", "variacoes": ["Espiga de milho", "Milho verde debulhado"]}, {"nome": "Vagem", "variacoes": []}, {"nome": "Gengibre", "variacoes": []}, {"nome": "Mandioca", "variacoes": ["Mandioca descascada", "Aipim"]}, {"nome": "Banana", "variacoes": ["Banana prata", "Banana nanica", "Banana maçã", "Banana da terra"]}, {"nome": "Maçã", "variacoes": ["Maçã gala", "Maçã fuji", "Maçã verde"]}, {"nome": "Laranja", "variacoes": ["Laranja pera", "Laranja lima", "Laranja bahia"]}, {"nome": "Limão", "variacoes": ["Limão taiti", "Limão siciliano"]}, {"nome": "Mamão", "variacoes": ["Mamão formosa", "Mamão papaia"]}, {"nome": "Melancia", "variacoes": []}, {"nome": "Melão", "variacoes": ["Melão amarelo", "Melão cantaloupe"]}, {"nome": "Abacaxi", "variacoes": ["Abacaxi pérola", "Abacaxi havaí"]}, {"nome": "Manga", "variacoes": ["Manga tommy", "Manga palmer"]}, {"nome": "Uva", "variacoes": ["Uva verde", "Uva roxa", "Uva itália", "Uva sem semente"]}, {"nome": "Morango", "variacoes": []}, {"nome": "Abacate", "variacoes": ["Abacate hass", "Abacate margarida"]}, {"nome": "Pera", "variacoes": ["Pera williams", "Pera portuguesa"]}, {"nome": "Kiwi", "variacoes": []}, {"nome": "Maracujá", "variacoes": ["Maracujá azedo", "Maracujá doce"]}, {"nome": "Goiaba", "variacoes": ["Goiaba vermelha", "Goiaba branca"]}, {"nome": "Coco verde", "variacoes": []}, {"nome": "Caqui", "variacoes": []}, {"nome": "Ameixa", "variacoes": ["Ameixa vermelha", "Ameixa preta"]}, {"nome": "Beterraba", "variacoes": []}, {"nome": "Berinjela", "variacoes": []}, {"nome": "Quiabo", "variacoes": []}, {"nome": "Jiló", "variacoes": []}, {"nome": "Maxixe", "variacoes": []}, {"nome": "Acelga", "variacoes": []}, {"nome": "Nabo", "variacoes": []}, {"nome": "Inhame", "variacoes": []}, {"nome": "Cará", "variacoes": []}, {"nome": "Mandioquinha", "variacoes": ["Mandioquinha-salsa"]}, {"nome": "Ervilha fresca", "variacoes": []}, {"nome": "Cogumelo", "variacoes": ["Cogumelo shimeji", "Cogumelo paris", "Shiitake"]}, {"nome": "Alcachofra", "variacoes": []}, {"nome": "Aspargo", "variacoes": ["Aspargo verde"]}, {"nome": "Ervas frescas", "variacoes": ["Manjericão", "Hortelã", "Alecrim", "Tomilho", "Salsa"]}, {"nome": "Amora", "variacoes": []}, {"nome": "Framboesa", "variacoes": []}, {"nome": "Figo", "variacoes": []}, {"nome": "Romã", "variacoes": []}, {"nome": "Tangerina", "variacoes": ["Tangerina poncã", "Tangerina murcote"]}, {"nome": "Limão galego", "variacoes": []}, {"nome": "Carambola", "variacoes": []}, {"nome": "Lichia", "variacoes": []}]}, {"categoria": "Açougue", "produtos": [{"nome": "Carne bovina", "variacoes": ["Patinho", "Alcatra", "Coxão mole", "Coxão duro", "Acém", "Maminha", "Picanha", "Fraldinha", "Costela bovina", "Contrafilé", "Filé mignon", "Cupim", "Paleta"]}, {"nome": "Carne moída", "variacoes": ["Patinho moído", "Acém moído", "Coxão mole moído", "Carne moída de primeira"]}, {"nome": "Frango", "variacoes": ["Frango inteiro", "Peito de frango", "Filé de peito", "Coxa de frango", "Sobrecoxa", "Asa de frango", "Drumete", "Coração de frango", "Moela"]}, {"nome": "Carne suína", "variacoes": ["Costela suína", "Lombo suíno", "Pernil suíno", "Bisteca suína", "Paleta suína", "Barriga suína"]}, {"nome": "Bacon", "variacoes": ["Bacon em fatias", "Bacon em cubos"]}, {"nome": "Linguiça", "variacoes": ["Linguiça calabresa", "Linguiça toscana", "Linguiça de frango", "Linguiça mineira", "Linguiça blumenau"]}, {"nome": "Carne para churrasco", "variacoes": ["Espetinho", "Chouriço", "Costela para churrasco", "Maminha em bife"]}, {"nome": "Carne de sol", "variacoes": []}, {"nome": "Charque", "variacoes": []}, {"nome": "Peru", "variacoes": ["Peru inteiro", "Coxa de peru"]}, {"nome": "Fígado", "variacoes": ["Fígado bovino", "Fígado de frango"]}, {"nome": "Cordeiro", "variacoes": ["Costela de cordeiro", "Pernil de cordeiro"]}, {"nome": "Ossobuco", "variacoes": []}, {"nome": "Rabada", "variacoes": []}, {"nome": "Língua bovina", "variacoes": []}, {"nome": "Coração bovino", "variacoes": []}, {"nome": "Rim", "variacoes": []}, {"nome": "Frango temperado", "variacoes": ["Peito de frango temperado", "Coxa temperada"]}, {"nome": "Hambúrguer artesanal", "variacoes": ["Hambúrguer de carne bovina", "Hambúrguer de cordeiro"]}, {"nome": "Kafta", "variacoes": []}]}, {"categoria": "Peixaria", "produtos": [{"nome": "Tilápia", "variacoes": ["Filé de tilápia", "Tilápia inteira"]}, {"nome": "Salmão", "variacoes": ["Filé de salmão", "Posta de salmão", "Salmão defumado"]}, {"nome": "Merluza", "variacoes": ["Filé de merluza", "Posta de merluza"]}, {"nome": "Sardinha fresca", "variacoes": []}, {"nome": "Bacalhau", "variacoes": ["Bacalhau dessalgado", "Bacalhau salgado"]}, {"nome": "Camarão", "variacoes": ["Camarão rosa", "Camarão cinza", "Camarão descascado", "Camarão sete barbas"]}, {"nome": "Pescada", "variacoes": ["Pescada amarela", "Pescada branca"]}, {"nome": "Corvina", "variacoes": []}, {"nome": "Robalo", "variacoes": []}, {"nome": "Lula", "variacoes": ["Lula em anéis", "Lula inteira"]}, {"nome": "Polvo", "variacoes": []}, {"nome": "Mexilhão", "variacoes": []}, {"nome": "Peixe-espada", "variacoes": []}, {"nome": "Pacu", "variacoes": []}, {"nome": "Cação", "variacoes": []}, {"nome": "Dourada", "variacoes": ["Dourada inteira", "Filé de dourada"]}, {"nome": "Badejo", "variacoes": []}, {"nome": "Linguado", "variacoes": []}, {"nome": "Pargo", "variacoes": []}, {"nome": "Ostra", "variacoes": []}, {"nome": "Vieira", "variacoes": []}, {"nome": "Caranguejo", "variacoes": ["Caranguejo cozido"]}, {"nome": "Siri", "variacoes": []}, {"nome": "Lagosta", "variacoes": ["Cauda de lagosta"]}]}, {"categoria": "Frios", "produtos": [{"nome": "Presunto", "variacoes": ["Presunto cozido", "Presunto de peru", "Presunto magro", "Presunto de Parma"]}, {"nome": "Mortadela", "variacoes": ["Mortadela tradicional", "Mortadela light", "Mortadela defumada", "Mortadela com azeitona"]}, {"nome": "Peito de peru", "variacoes": ["Peito de peru defumado", "Peito de peru fatiado"]}, {"nome": "Salame", "variacoes": ["Salame italiano", "Salame tipo italiano", "Salame com pimenta"]}, {"nome": "Copa", "variacoes": ["Copa lombo", "Copa de peru"]}, {"nome": "Lombo defumado", "variacoes": []}, {"nome": "Salsicha", "variacoes": ["Salsicha tradicional", "Salsicha hot dog", "Salsicha light", "Salsicha de frango"]}, {"nome": "Queijo mussarela", "variacoes": ["Queijo mussarela fatiado", "Queijo mussarela ralado", "Queijo mussarela em peça", "Queijo mussarela light"]}, {"nome": "Queijo prato", "variacoes": ["Queijo prato fatiado", "Queijo prato em peça", "Queijo prato light"]}, {"nome": "Queijo minas", "variacoes": ["Queijo minas frescal", "Queijo minas padrão", "Queijo minas light"]}, {"nome": "Queijo parmesão", "variacoes": ["Queijo parmesão ralado", "Queijo parmesão em peça"]}, {"nome": "Queijo coalho", "variacoes": []}, {"nome": "Queijo provolone", "variacoes": []}, {"nome": "Queijo gorgonzola", "variacoes": []}, {"nome": "Cheddar", "variacoes": ["Cheddar fatiado", "Cheddar em pasta"]}, {"nome": "Ricota", "variacoes": ["Ricota fresca", "Ricota temperada"]}, {"nome": "Cottage", "variacoes": ["Cottage natural", "Cottage com ervas"]}, {"nome": "Queijo brie", "variacoes": []}, {"nome": "Queijo camembert", "variacoes": []}, {"nome": "Queijo gouda", "variacoes": []}, {"nome": "Queijo emmental", "variacoes": []}, {"nome": "Queijo reino", "variacoes": []}, {"nome": "Queijo pecorino", "variacoes": []}, {"nome": "Queijo canastra", "variacoes": []}, {"nome": "Mussarela de búfala", "variacoes": []}, {"nome": "Patê", "variacoes": ["Patê de frango", "Patê de atum", "Patê de presunto"]}]}, {"categoria": "Laticínios e geladeira", "produtos": [{"nome": "Leite", "variacoes": ["Leite integral", "Leite desnatado", "Leite semidesnatado", "Leite sem lactose", "Leite UHT", "Leite de cabra"]}, {"nome": "Iogurte", "variacoes": ["Iogurte natural", "Iogurte grego natural", "Iogurte de morango", "Iogurte light", "Iogurte integral"]}, {"nome": "Bebida láctea", "variacoes": ["Bebida láctea de morango", "Bebida láctea de chocolate", "Bebida láctea de baunilha"]}, {"nome": "Requeijão", "variacoes": ["Requeijão cremoso", "Requeijão light", "Requeijão de corte"]}, {"nome": "Manteiga", "variacoes": ["Manteiga com sal", "Manteiga sem sal", "Manteiga com ervas"]}, {"nome": "Margarina", "variacoes": ["Margarina com sal", "Margarina sem sal", "Margarina light", "Margarina vegetal"]}, {"nome": "Creme de leite", "variacoes": ["Creme de leite de caixa", "Creme de leite sem lactose", "Creme de leite light"]}, {"nome": "Nata", "variacoes": ["Nata fresca", "Nata para chantilly"]}, {"nome": "Coalhada", "variacoes": ["Coalhada natural", "Coalhada seca"]}, {"nome": "Ovos", "variacoes": ["Dúzia de ovos", "Ovos caipira", "Ovos orgânicos", "Ovos brancos", "Ovos vermelhos"]}, {"nome": "Leite condensado", "variacoes": ["Leite condensado tradicional", "Leite condensado light"]}, {"nome": "Cream cheese", "variacoes": []}, {"nome": "Kefir", "variacoes": []}, {"nome": "Queijo ralado", "variacoes": []}, {"nome": "Tofu", "variacoes": ["Tofu firme", "Tofu defumado"]}]}, {"categoria": "Padaria", "produtos": [{"nome": "Pão francês", "variacoes": []}, {"nome": "Pão de forma", "variacoes": ["Pão de forma tradicional", "Pão de forma integral", "Pão de forma sem casca", "Pão de forma light", "Pão de forma de leite"]}, {"nome": "Pão sírio", "variacoes": ["Pão sírio tradicional", "Pão sírio integral"]}, {"nome": "Pão de hambúrguer", "variacoes": ["Pão de hambúrguer com gergelim", "Pão de hambúrguer brioche"]}, {"nome": "Pão de hot dog", "variacoes": []}, {"nome": "Pão italiano", "variacoes": []}, {"nome": "Pão australiano", "variacoes": []}, {"nome": "Pão de leite", "variacoes": []}, {"nome": "Pão de centeio", "variacoes": []}, {"nome": "Baguete", "variacoes": []}, {"nome": "Pão de queijo", "variacoes": ["Pão de queijo pronto", "Mistura para pão de queijo"]}, {"nome": "Torrada", "variacoes": ["Torrada tradicional", "Torrada integral", "Torrada de centeio"]}, {"nome": "Wrap", "variacoes": ["Wrap integral", "Tortilha de trigo", "Tortilha de milho"]}, {"nome": "Bolo", "variacoes": ["Bolo de cenoura", "Bolo de chocolate", "Bolo de fubá", "Bolo de laranja", "Bolo de milho"]}, {"nome": "Croissant", "variacoes": ["Croissant de chocolate", "Croissant de presunto e queijo", "Croissant simples"]}, {"nome": "Rosca", "variacoes": ["Rosca doce", "Rosca de polvilho"]}, {"nome": "Coxinha", "variacoes": ["Coxinha de frango", "Coxinha de catupiry"]}, {"nome": "Empada", "variacoes": ["Empada de frango", "Empada de palmito"]}, {"nome": "Pastel", "variacoes": ["Pastel de carne", "Pastel de queijo", "Pastel de frango", "Pastel de pizza"]}, {"nome": "Esfiha", "variacoes": ["Esfiha de carne", "Esfiha de queijo", "Esfiha aberta"]}, {"nome": "Kibe", "variacoes": ["Kibe de carne", "Kibe frito"]}, {"nome": "Pão de batata", "variacoes": []}, {"nome": "Pão de milho", "variacoes": []}, {"nome": "Pão integral", "variacoes": []}, {"nome": "Focaccia", "variacoes": []}, {"nome": "Ciabatta", "variacoes": []}, {"nome": "Brioche", "variacoes": []}, {"nome": "Pão de mel", "variacoes": []}, {"nome": "Torta", "variacoes": ["Torta de frango", "Torta de limão"]}, {"nome": "Sonho", "variacoes": []}, {"nome": "Bomba", "variacoes": ["Bomba de chocolate", "Bomba de creme"]}, {"nome": "Cuca", "variacoes": ["Cuca de banana"]}]}, {"categoria": "Mercearia", "produtos": [{"nome": "Arroz", "variacoes": ["Arroz branco tipo 1", "Arroz integral", "Arroz parboilizado", "Arroz agulhinha", "Arroz japonês", "Arroz para risoto"]}, {"nome": "Feijão", "variacoes": ["Feijão carioca", "Feijão preto", "Feijão fradinho", "Feijão branco", "Feijão rajado", "Feijão de corda"]}, {"nome": "Lentilha", "variacoes": ["Lentilha marrom", "Lentilha verde"]}, {"nome": "Grão-de-bico", "variacoes": []}, {"nome": "Ervilha seca", "variacoes": []}, {"nome": "Açúcar", "variacoes": ["Açúcar cristal", "Açúcar refinado", "Açúcar demerara", "Açúcar mascavo", "Açúcar de confeiteiro", "Açúcar light", "Açúcar de coco"]}, {"nome": "Adoçante", "variacoes": ["Adoçante líquido", "Adoçante em pó", "Adoçante em comprimidos", "Stévia"]}, {"nome": "Sal", "variacoes": ["Sal refinado", "Sal grosso", "Sal rosa do Himalaia", "Sal marinho", "Sal light"]}, {"nome": "Farinha de trigo", "variacoes": ["Farinha de trigo tipo 1", "Farinha de trigo integral", "Farinha de trigo para bolo", "Farinha de trigo com fermento"]}, {"nome": "Farinha de mandioca", "variacoes": ["Farinha de mandioca crua", "Farinha de mandioca torrada", "Farinha d'água"]}, {"nome": "Farinha de rosca", "variacoes": []}, {"nome": "Farinha láctea", "variacoes": []}, {"nome": "Fubá", "variacoes": ["Fubá mimoso", "Fubá de moinho", "Fubá em flocos"]}, {"nome": "Polvilho", "variacoes": ["Polvilho doce", "Polvilho azedo"]}, {"nome": "Amido de milho", "variacoes": ["Maisena"]}, {"nome": "Aveia", "variacoes": ["Aveia em flocos finos", "Aveia em flocos grossos", "Farinha de aveia"]}, {"nome": "Granola", "variacoes": ["Granola tradicional", "Granola com mel", "Granola sem açúcar"]}, {"nome": "Cereal matinal", "variacoes": ["Cereal de milho", "Cereal de arroz", "Cereal integral", "Cereal de chocolate", "Cereal de trigo"]}, {"nome": "Chia", "variacoes": ["Semente de chia", "Linhaça dourada", "Linhaça marrom"]}, {"nome": "Quinoa", "variacoes": ["Quinoa em grão", "Quinoa em flocos"]}, {"nome": "Café", "variacoes": ["Café torrado e moído", "Café em grão", "Café solúvel", "Café descafeinado", "Café em cápsula", "Café extraforte"]}, {"nome": "Óleo", "variacoes": ["Óleo de soja", "Óleo de girassol", "Óleo de milho", "Óleo de canola", "Óleo de coco", "Óleo de algodão", "Óleo de gergelim"]}, {"nome": "Azeite", "variacoes": ["Azeite de oliva extravirgem", "Azeite de oliva", "Azeite de dendê", "Azeite aromatizado"]}, {"nome": "Vinagre", "variacoes": ["Vinagre de álcool", "Vinagre de maçã", "Vinagre balsâmico", "Vinagre de vinho tinto", "Vinagre branco"]}, {"nome": "Macarrão", "variacoes": ["Macarrão espaguete", "Macarrão parafuso", "Macarrão penne", "Macarrão de ovos", "Macarrão integral", "Macarrão instantâneo", "Macarrão fusilli", "Macarrão nhoque", "Macarrão talharim", "Macarrão cabelo de anjo", "Macarrão de arroz", "Macarrão sem glúten"]}, {"nome": "Massa de lasanha", "variacoes": ["Massa de lasanha tradicional", "Massa de lasanha de ovos"]}, {"nome": "Massa de pizza", "variacoes": ["Massa de pizza pronta", "Massa de pizza integral"]}, {"nome": "Massa de pastel", "variacoes": ["Massa de pastel para fritar", "Massa de pastel para assar"]}, {"nome": "Massa de panqueca", "variacoes": []}, {"nome": "Milho de pipoca", "variacoes": []}, {"nome": "Leite de coco", "variacoes": ["Leite de coco light"]}, {"nome": "Canjica", "variacoes": ["Canjica branca", "Canjica amarela"]}, {"nome": "Sagu", "variacoes": []}, {"nome": "Tapioca", "variacoes": ["Goma de tapioca", "Farinha de tapioca"]}, {"nome": "Cuscuz", "variacoes": ["Flocão de milho para cuscuz"]}, {"nome": "Gergelim", "variacoes": ["Gergelim torrado", "Gergelim preto"]}, {"nome": "Amendoim em pó", "variacoes": []}, {"nome": "Melado", "variacoes": ["Melado de cana"]}, {"nome": "Rapadura", "variacoes": []}, {"nome": "Cacau em pó", "variacoes": ["Cacau em pó 100%"]}, {"nome": "Mistura para bolo", "variacoes": ["Mistura para bolo de chocolate", "Mistura para bolo de cenoura", "Mistura para bolo de laranja"]}]}, {"categoria": "Temperos e condimentos", "produtos": [{"nome": "Pimenta-do-reino", "variacoes": ["Pimenta-do-reino moída", "Pimenta-do-reino em grão", "Pimenta branca"]}, {"nome": "Colorau", "variacoes": ["Urucum em pó"]}, {"nome": "Louro", "variacoes": ["Folha de louro"]}, {"nome": "Orégano", "variacoes": ["Orégano desidratado"]}, {"nome": "Cominho", "variacoes": ["Cominho em pó", "Cominho em grão"]}, {"nome": "Alho em pó", "variacoes": []}, {"nome": "Cebola em pó", "variacoes": []}, {"nome": "Páprica", "variacoes": ["Páprica doce", "Páprica picante", "Páprica defumada"]}, {"nome": "Noz-moscada", "variacoes": []}, {"nome": "Canela", "variacoes": ["Canela em pó", "Canela em pau"]}, {"nome": "Cúrcuma", "variacoes": ["Cúrcuma em pó", "Açafrão-da-terra"]}, {"nome": "Gengibre em pó", "variacoes": []}, {"nome": "Curry", "variacoes": []}, {"nome": "Chimichurri", "variacoes": []}, {"nome": "Tempero completo", "variacoes": ["Tempero completo sem pimenta", "Tempero completo com pimenta"]}, {"nome": "Tempero para carne", "variacoes": []}, {"nome": "Tempero para frango", "variacoes": []}, {"nome": "Salsa desidratada", "variacoes": []}, {"nome": "Cheiro-verde desidratado", "variacoes": []}, {"nome": "Caldo de carne", "variacoes": ["Caldo de carne em tablete", "Caldo de carne em pó"]}, {"nome": "Caldo de galinha", "variacoes": ["Caldo de galinha em tablete", "Caldo de galinha em pó"]}, {"nome": "Caldo de legumes", "variacoes": []}, {"nome": "Caldo de feijão", "variacoes": []}, {"nome": "Sopa instantânea", "variacoes": ["Sopa de legumes", "Sopa de cebola", "Sopa de capeletti"]}, {"nome": "Pimenta calabresa", "variacoes": []}, {"nome": "Alecrim seco", "variacoes": []}, {"nome": "Manjericão seco", "variacoes": []}, {"nome": "Tomilho seco", "variacoes": []}, {"nome": "Sálvia", "variacoes": []}, {"nome": "Cravo-da-índia", "variacoes": []}, {"nome": "Erva-doce em semente", "variacoes": []}, {"nome": "Mostarda em pó", "variacoes": []}, {"nome": "Coentro em pó", "variacoes": []}, {"nome": "Tempero para peixe", "variacoes": []}, {"nome": "Caldo de peixe", "variacoes": ["Caldo de peixe em pó"]}, {"nome": "Caldo de camarão", "variacoes": []}, {"nome": "Tempero baiano", "variacoes": []}]}, {"categoria": "Molhos", "produtos": [{"nome": "Molho de tomate", "variacoes": ["Molho de tomate tradicional", "Molho de tomate com manjericão", "Molho de tomate sem pedaços"]}, {"nome": "Molho pronto para pizza", "variacoes": []}, {"nome": "Extrato de tomate", "variacoes": ["Extrato de tomate simples", "Extrato de tomate concentrado"]}, {"nome": "Polpa de tomate", "variacoes": []}, {"nome": "Molho shoyu", "variacoes": ["Shoyu tradicional", "Shoyu light"]}, {"nome": "Molho de pimenta", "variacoes": ["Molho de pimenta vermelha", "Molho de pimenta dedo-de-moça", "Molho de pimenta verde"]}, {"nome": "Ketchup", "variacoes": ["Ketchup tradicional", "Ketchup light"]}, {"nome": "Mostarda", "variacoes": ["Mostarda amarela", "Mostarda dijon"]}, {"nome": "Maionese", "variacoes": ["Maionese tradicional", "Maionese light", "Maionese temperada", "Maionese de alho"]}, {"nome": "Molho barbecue", "variacoes": []}, {"nome": "Molho inglês", "variacoes": []}, {"nome": "Molho de alho", "variacoes": []}, {"nome": "Molho tártaro", "variacoes": []}, {"nome": "Pesto", "variacoes": ["Pesto de manjericão"]}, {"nome": "Molho para salada", "variacoes": ["Molho italiano", "Molho de mostarda e mel"]}, {"nome": "Molho agridoce", "variacoes": []}, {"nome": "Molho teriyaki", "variacoes": []}, {"nome": "Sriracha", "variacoes": []}, {"nome": "Molho de ostra", "variacoes": []}, {"nome": "Molho bolonhesa", "variacoes": ["Molho bolonhesa pronto"]}, {"nome": "Molho branco", "variacoes": ["Molho branco pronto"]}]}, {"categoria": "Conservas e enlatados", "produtos": [{"nome": "Milho verde em lata", "variacoes": ["Milho verde em conserva", "Milho em lata sem sal"]}, {"nome": "Ervilha em lata", "variacoes": ["Ervilha em conserva", "Ervilha tortinha"]}, {"nome": "Grão-de-bico em lata", "variacoes": []}, {"nome": "Palmito", "variacoes": ["Palmito em conserva", "Palmito picado", "Palmito inteiro"]}, {"nome": "Azeitona", "variacoes": ["Azeitona verde", "Azeitona preta", "Azeitona recheada", "Azeitona sem caroço"]}, {"nome": "Atum em lata", "variacoes": ["Atum ralado em óleo", "Atum sólido ao natural", "Atum em azeite", "Atum ao molho de tomate"]}, {"nome": "Sardinha em lata", "variacoes": ["Sardinha ao molho de tomate", "Sardinha ao óleo", "Sardinha picante"]}, {"nome": "Champignon", "variacoes": ["Champignon fatiado", "Champignon inteiro"]}, {"nome": "Pêssego em calda", "variacoes": ["Pêssego em metades"]}, {"nome": "Picles", "variacoes": ["Picles de pepino", "Picles de cebola", "Pepino em conserva"]}, {"nome": "Creme de milho", "variacoes": ["Creme de milho em lata"]}, {"nome": "Feijoada pronta", "variacoes": ["Feijoada pronta em lata"]}, {"nome": "Aspargos", "variacoes": ["Aspargos em conserva"]}, {"nome": "Alcaparras", "variacoes": []}, {"nome": "Feijão em lata", "variacoes": ["Feijão carioca em lata", "Feijão preto em lata"]}, {"nome": "Lentilha em lata", "variacoes": []}, {"nome": "Pimentão em conserva", "variacoes": []}, {"nome": "Abacaxi em calda", "variacoes": []}, {"nome": "Salsicha em lata", "variacoes": []}]}, {"categoria": "Bebidas", "produtos": [{"nome": "Água", "variacoes": ["Água mineral sem gás", "Água mineral com gás", "Água de 500 ml", "Água de 1,5 litro", "Água de 5 litros", "Água com sabor"]}, {"nome": "Refrigerante", "variacoes": ["Refrigerante de cola", "Refrigerante de guaraná", "Refrigerante de laranja", "Refrigerante de limão", "Refrigerante de uva", "Refrigerante zero", "Refrigerante diet"]}, {"nome": "Suco", "variacoes": ["Suco de laranja natural", "Suco de laranja integral", "Suco de uva integral", "Suco de caju", "Suco de maracujá", "Suco de abacaxi", "Suco de goiaba", "Suco de limão", "Suco em pó", "Suco concentrado"]}, {"nome": "Água de coco", "variacoes": ["Água de coco em caixinha", "Água de coco em garrafa"]}, {"nome": "Energético", "variacoes": ["Energético tradicional", "Energético zero"]}, {"nome": "Isotônico", "variacoes": ["Isotônico de laranja", "Isotônico de limão"]}, {"nome": "Chá", "variacoes": ["Chá mate", "Chá preto", "Chá verde", "Chá de camomila", "Chá de hortelã", "Chá de erva-doce", "Chá de cidreira", "Chá de gengibre", "Chá de frutas vermelhas", "Chá gelado"]}, {"nome": "Cerveja", "variacoes": ["Cerveja pilsen lata", "Cerveja pilsen long neck", "Cerveja pilsen garrafa", "Cerveja sem álcool", "Cerveja IPA", "Cerveja weiss"]}, {"nome": "Vinho", "variacoes": ["Vinho tinto seco", "Vinho branco seco", "Vinho rosé", "Vinho tinto suave", "Vinho branco suave", "Vinho espumante"]}, {"nome": "Destilados", "variacoes": ["Cachaça", "Vodka", "Whisky", "Gin", "Rum", "Tequila", "Licor"]}, {"nome": "Achocolatado em pó", "variacoes": ["Achocolatado em pó tradicional", "Achocolatado em pó light"]}, {"nome": "Achocolatado líquido", "variacoes": ["Achocolatado líquido de caixinha", "Achocolatado líquido zero lactose"]}, {"nome": "Bebida de soja", "variacoes": ["Bebida de soja natural", "Bebida de soja sabor chocolate"]}, {"nome": "Bebida de aveia", "variacoes": []}, {"nome": "Bebida de amêndoa", "variacoes": []}, {"nome": "Suco de manga", "variacoes": []}, {"nome": "Suco de cajá", "variacoes": []}, {"nome": "Suco de acerola", "variacoes": []}, {"nome": "Suco de pêssego", "variacoes": []}, {"nome": "Cerveja artesanal", "variacoes": []}, {"nome": "Cidra", "variacoes": ["Cidra de maçã"]}, {"nome": "Kombucha", "variacoes": []}, {"nome": "Chá de hibisco", "variacoes": []}, {"nome": "Chá de carqueja", "variacoes": []}, {"nome": "Bebida de castanha", "variacoes": []}, {"nome": "Água tônica", "variacoes": []}, {"nome": "Soda limonada", "variacoes": []}]}, {"categoria": "Doces e sobremesas", "produtos": [{"nome": "Chocolate", "variacoes": ["Chocolate ao leite em barra", "Chocolate meio amargo", "Chocolate branco", "Chocolate 70% cacau", "Chocolate em pó", "Chocolate granulado"]}, {"nome": "Gotas de chocolate", "variacoes": []}, {"nome": "Cobertura de chocolate", "variacoes": []}, {"nome": "Bombom", "variacoes": ["Bombom de morango", "Bombom de cereja", "Bombom sortido"]}, {"nome": "Bala", "variacoes": ["Bala de goma", "Bala de hortelã", "Bala de caramelo", "Pirulito"]}, {"nome": "Chiclete", "variacoes": ["Chiclete de menta", "Chiclete de canela"]}, {"nome": "Geleia", "variacoes": ["Geleia de morango", "Geleia de uva", "Geleia de amora", "Geleia de damasco"]}, {"nome": "Doce de leite", "variacoes": ["Doce de leite pastoso", "Doce de leite em barra", "Doce de leite light"]}, {"nome": "Goiabada", "variacoes": ["Goiabada em barra", "Goiabada cascão"]}, {"nome": "Mel", "variacoes": ["Mel puro", "Mel de flores silvestres", "Mel de eucalipto", "Mel orgânico", "Mel em bisnaga"]}, {"nome": "Pasta de amendoim", "variacoes": ["Pasta de amendoim integral"]}, {"nome": "Creme de avelã", "variacoes": []}, {"nome": "Gelatina", "variacoes": ["Gelatina de morango", "Gelatina de uva", "Gelatina de limão", "Gelatina diet", "Gelatina em pó"]}, {"nome": "Pudim pronto", "variacoes": ["Pudim de leite", "Pudim de chocolate", "Mistura para pudim"]}, {"nome": "Mousse", "variacoes": ["Mousse de chocolate", "Mousse de maracujá", "Mousse de limão"]}, {"nome": "Coco ralado", "variacoes": ["Coco ralado úmido", "Coco ralado seco", "Coco ralado adoçado"]}, {"nome": "Leite em pó", "variacoes": ["Leite em pó integral", "Leite em pó desnatado", "Leite em pó instantâneo"]}, {"nome": "Fermento", "variacoes": ["Fermento em pó químico", "Fermento biológico seco", "Fermento biológico fresco", "Fermento instantâneo"]}, {"nome": "Bicarbonato de sódio", "variacoes": []}, {"nome": "Essência de baunilha", "variacoes": ["Extrato de baunilha"]}, {"nome": "Corante alimentício", "variacoes": ["Corante alimentício líquido", "Corante em gel"]}, {"nome": "Pé de moleque", "variacoes": []}, {"nome": "Paçoca", "variacoes": []}, {"nome": "Marshmallow", "variacoes": ["Marshmallow branco", "Marshmallow rosa"]}, {"nome": "Bala de coco", "variacoes": []}, {"nome": "Gominhas", "variacoes": []}, {"nome": "Confeito de açúcar", "variacoes": []}, {"nome": "Cobertura de morango", "variacoes": []}, {"nome": "Chantilly", "variacoes": ["Chantilly em lata"]}, {"nome": "Glacê", "variacoes": ["Glacê de confeiteiro"]}, {"nome": "Granulado", "variacoes": ["Granulado colorido"]}]}, {"categoria": "Biscoitos e snacks", "produtos": [{"nome": "Biscoito recheado", "variacoes": ["Biscoito recheado de chocolate", "Biscoito recheado de morango", "Biscoito recheado de baunilha", "Biscoito recheado de limão"]}, {"nome": "Biscoito doce", "variacoes": ["Biscoito maria", "Biscoito maisena", "Biscoito de leite", "Biscoito de coco", "Biscoito amanteigado", "Biscoito de aveia"]}, {"nome": "Biscoito salgado", "variacoes": ["Biscoito cream cracker", "Biscoito de água e sal", "Biscoito de polvilho doce", "Biscoito de polvilho azedo", "Biscoito integral", "Biscoito de queijo"]}, {"nome": "Biscoito wafer", "variacoes": ["Biscoito wafer de chocolate", "Biscoito wafer de morango", "Biscoito wafer de baunilha"]}, {"nome": "Salgadinho", "variacoes": ["Salgadinho de milho", "Salgadinho de trigo", "Salgadinho sabor queijo", "Salgadinho sabor churrasco"]}, {"nome": "Batata chips", "variacoes": ["Batata chips original", "Batata chips sabor churrasco", "Batata chips sabor queijo", "Batata chips light"]}, {"nome": "Tortilha chips", "variacoes": ["Nachos", "Tortilha chips sabor queijo"]}, {"nome": "Pipoca de micro-ondas", "variacoes": ["Pipoca de micro-ondas manteiga", "Pipoca de micro-ondas doce"]}, {"nome": "Amendoim", "variacoes": ["Amendoim torrado", "Amendoim japonês", "Amendoim doce", "Amendoim sem casca"]}, {"nome": "Castanha", "variacoes": ["Castanha de caju", "Castanha-do-pará", "Castanha de caju torrada"]}, {"nome": "Nozes", "variacoes": []}, {"nome": "Amêndoas", "variacoes": []}, {"nome": "Mix de castanhas", "variacoes": []}, {"nome": "Frutas secas", "variacoes": ["Uva passa", "Damasco seco", "Ameixa seca", "Tâmara", "Banana passa", "Figo seco"]}, {"nome": "Barra de cereal", "variacoes": ["Barra de cereal com chocolate", "Barra de cereal sem açúcar"]}, {"nome": "Palitinho salgado", "variacoes": []}, {"nome": "Chips de batata doce", "variacoes": []}, {"nome": "Pipoca doce", "variacoes": []}, {"nome": "Mix de sementes", "variacoes": []}, {"nome": "Cookie", "variacoes": ["Cookie de chocolate", "Cookie de aveia"]}]}, {"categoria": "Congelados", "produtos": [{"nome": "Pizza congelada", "variacoes": ["Pizza de mussarela", "Pizza de calabresa", "Pizza portuguesa", "Pizza de frango com catupiry", "Pizza de atum"]}, {"nome": "Lasanha congelada", "variacoes": ["Lasanha de carne", "Lasanha de frango", "Lasanha de mussarela"]}, {"nome": "Hambúrguer", "variacoes": ["Hambúrguer bovino", "Hambúrguer de frango", "Hambúrguer de picanha", "Hambúrguer de soja", "Hambúrguer vegetal"]}, {"nome": "Almôndega", "variacoes": ["Almôndega de carne", "Almôndega de frango"]}, {"nome": "Empanado", "variacoes": ["Nuggets de frango", "Empanado de frango", "Empanado de peixe", "Empanado de queijo", "Empanado de legumes"]}, {"nome": "Batata frita", "variacoes": ["Batata palito", "Batata rústica", "Batata canoa", "Batata smile", "Batata congelada tradicional"]}, {"nome": "Polpa de fruta", "variacoes": ["Polpa de açaí", "Polpa de acerola", "Polpa de maracujá", "Polpa de goiaba", "Polpa de abacaxi", "Polpa de caju", "Polpa de cupuaçu", "Polpa de morango", "Polpa de manga", "Polpa de graviola"]}, {"nome": "Sorvete", "variacoes": ["Sorvete de creme", "Sorvete de chocolate", "Sorvete de morango", "Sorvete de flocos", "Sorvete de baunilha", "Sorvete de coco", "Sorvete zero açúcar"]}, {"nome": "Picolé", "variacoes": ["Picolé de frutas", "Picolé de chocolate", "Picolé de leite condensado"]}, {"nome": "Mix de legumes", "variacoes": ["Mix para sopa", "Mix oriental", "Mix de legumes para refogar"]}, {"nome": "Vegetais congelados", "variacoes": ["Ervilha congelada", "Milho verde congelado", "Brócolis congelado", "Couve-flor congelada", "Espinafre congelado", "Vagem congelada", "Cenoura congelada"]}, {"nome": "Salgados congelados", "variacoes": ["Coxinha congelada", "Pão de queijo congelado", "Esfiha congelada", "Kibe congelado", "Empada congelada", "Pastel congelado", "Enroladinho de salsicha congelado", "Bolinho de bacalhau congelado"]}, {"nome": "Massas congeladas", "variacoes": ["Nhoque congelado", "Ravióli de queijo", "Ravióli de carne", "Tortellini de frango", "Capeletti congelado"]}, {"nome": "Pão congelado", "variacoes": ["Pão francês congelado", "Pão de alho congelado", "Pão de hambúrguer congelado"]}, {"nome": "Refeição pronta congelada", "variacoes": ["Feijoada congelada", "Strogonoff de frango congelado", "Escondidinho congelado", "Arroz de forno congelado"]}, {"nome": "Enroladinho de queijo congelado", "variacoes": []}, {"nome": "Bolinho de carne congelado", "variacoes": []}, {"nome": "Sorvete napolitano", "variacoes": []}, {"nome": "Hambúrguer de peixe", "variacoes": []}]}, {"categoria": "Limpeza", "produtos": [{"nome": "Detergente", "variacoes": ["Detergente líquido neutro", "Detergente de coco", "Detergente de limão", "Detergente concentrado"]}, {"nome": "Lava-louças", "variacoes": ["Lava-louças em pó", "Lava-louças em gel", "Pastilha para lava-louças", "Abrilhantador para lava-louças", "Sal para lava-louças"]}, {"nome": "Sabão em pó", "variacoes": ["Sabão em pó tradicional", "Sabão em pó concentrado", "Sabão em pó para roupas coloridas", "Sabão em pó para roupas brancas"]}, {"nome": "Sabão em barra", "variacoes": ["Sabão em barra neutro", "Sabão em barra de coco", "Sabão em barra para roupas delicadas"]}, {"nome": "Sabão líquido", "variacoes": ["Sabão líquido para roupas", "Sabão líquido concentrado"]}, {"nome": "Amaciante", "variacoes": ["Amaciante tradicional", "Amaciante concentrado", "Amaciante sachê", "Amaciante perfumado"]}, {"nome": "Água sanitária", "variacoes": ["Água sanitária tradicional", "Água sanitária concentrada"]}, {"nome": "Desinfetante", "variacoes": ["Desinfetante de pinho", "Desinfetante floral", "Desinfetante de lavanda", "Desinfetante de eucalipto", "Desinfetante de limão"]}, {"nome": "Limpador multiuso", "variacoes": ["Limpador multiuso de limão", "Limpador multiuso de lavanda", "Limpador multiuso concentrado"]}, {"nome": "Limpa-vidros", "variacoes": ["Limpa-vidros spray", "Limpa-vidros refil"]}, {"nome": "Desengordurante", "variacoes": ["Desengordurante de cozinha", "Desengordurante spray"]}, {"nome": "Esponja", "variacoes": ["Esponja de louça dupla face", "Esponja de aço", "Esponja de celulose", "Esponja para limpeza pesada"]}, {"nome": "Pano de chão", "variacoes": ["Pano de chão de microfibra", "Pano de chão de algodão"]}, {"nome": "Pano de prato", "variacoes": ["Pano de prato de algodão", "Pano de prato de microfibra"]}, {"nome": "Vassoura", "variacoes": ["Vassoura de pelo", "Vassoura de piaçava", "Vassoura de nylon"]}, {"nome": "Rodo", "variacoes": ["Rodo de borracha", "Rodo de espuma"]}, {"nome": "Saco de lixo", "variacoes": ["Saco de lixo 10 litros", "Saco de lixo 30 litros", "Saco de lixo 50 litros", "Saco de lixo 100 litros", "Saco de lixo preto", "Saco de lixo reforçado"]}, {"nome": "Alvejante", "variacoes": ["Alvejante em pó", "Alvejante líquido", "Alvejante para roupas brancas"]}, {"nome": "Removedor de manchas", "variacoes": ["Removedor de ferrugem", "Removedor de limo"]}, {"nome": "Cera para piso", "variacoes": ["Cera líquida"]}, {"nome": "Inseticida", "variacoes": ["Inseticida spray", "Inseticida em pastilha"]}, {"nome": "Lustra-móveis", "variacoes": ["Lustra-móveis de limão"]}, {"nome": "Álcool de limpeza", "variacoes": ["Álcool 70% líquido"]}, {"nome": "Luva de limpeza", "variacoes": ["Luva de borracha"]}, {"nome": "Balde", "variacoes": ["Balde 10 litros"]}, {"nome": "Escova sanitária", "variacoes": ["Escova para vaso sanitário"]}, {"nome": "Odorizador", "variacoes": ["Odorizador de ambiente", "Odorizador em spray"]}, {"nome": "Sabão em barra para louça", "variacoes": []}, {"nome": "Lava-roupas líquido", "variacoes": []}, {"nome": "Desentupidor de pia", "variacoes": []}]}, {"categoria": "Higiene pessoal", "produtos": [{"nome": "Papel higiênico", "variacoes": ["Papel higiênico folha simples", "Papel higiênico folha dupla", "Papel higiênico folha tripla", "Papel higiênico neutro", "Papel higiênico perfumado"]}, {"nome": "Lenço de papel", "variacoes": ["Lenço de papel box", "Lenço de papel comum"]}, {"nome": "Sabonete", "variacoes": ["Sabonete líquido", "Sabonete em barra", "Sabonete glicerinado", "Sabonete antibacteriano", "Sabonete hidratante", "Sabonete facial"]}, {"nome": "Shampoo", "variacoes": ["Shampoo anticaspa", "Shampoo hidratante", "Shampoo para cabelos oleosos", "Shampoo para cabelos secos", "Shampoo infantil", "Shampoo com queratina", "Shampoo para cabelos cacheados"]}, {"nome": "Condicionador", "variacoes": ["Condicionador hidratante", "Condicionador reparador", "Condicionador infantil", "Condicionador para cabelos cacheados"]}, {"nome": "Máscara capilar", "variacoes": []}, {"nome": "Creme para pentear", "variacoes": []}, {"nome": "Creme dental", "variacoes": ["Creme dental tradicional", "Creme dental branqueador", "Creme dental infantil", "Creme dental sem flúor", "Creme dental sensível"]}, {"nome": "Escova de dente", "variacoes": ["Escova de dente macia", "Escova de dente média", "Escova de dente dura", "Escova de dente infantil"]}, {"nome": "Fio dental", "variacoes": ["Fio dental encerado", "Fio dental sabor menta", "Fio dental sem cera"]}, {"nome": "Enxaguante bucal", "variacoes": ["Enxaguante bucal sem álcool", "Enxaguante bucal sabor menta", "Enxaguante bucal infantil"]}, {"nome": "Desodorante", "variacoes": ["Desodorante aerosol", "Desodorante roll-on", "Desodorante creme", "Desodorante sem perfume", "Desodorante antitranspirante"]}, {"nome": "Hidratante corporal", "variacoes": ["Hidratante para pés", "Hidratante para mãos"]}, {"nome": "Protetor solar", "variacoes": ["Protetor solar FPS 30", "Protetor solar FPS 50", "Protetor solar facial", "Protetor solar infantil", "Protetor solar em spray"]}, {"nome": "Lâmina de barbear", "variacoes": ["Aparelho de barbear descartável", "Lâmina de barbear dupla"]}, {"nome": "Creme de barbear", "variacoes": ["Creme de barbear tradicional", "Espuma de barbear", "Gel de barbear"]}, {"nome": "Absorvente", "variacoes": ["Absorvente noturno", "Absorvente diurno", "Absorvente com abas", "Absorvente sem abas", "Absorvente ultrafino", "Absorvente interno"]}, {"nome": "Algodão", "variacoes": ["Algodão em rolo", "Algodão em bolinhas", "Algodão para maquiagem"]}, {"nome": "Cotonete", "variacoes": ["Cotonete tradicional", "Cotonete com haste de papel"]}, {"nome": "Lenço umedecido", "variacoes": ["Lenço umedecido adulto", "Lenço umedecido infantil", "Lenço umedecido de limpeza"]}, {"nome": "Gel fixador", "variacoes": ["Gel para cabelo", "Mousse para cabelo", "Spray fixador"]}, {"nome": "Repelente", "variacoes": ["Repelente spray", "Repelente loção", "Repelente elétrico", "Repelente para crianças"]}, {"nome": "Preservativo", "variacoes": ["Preservativo lubrificado", "Preservativo com sabor", "Preservativo sem lubrificante"]}, {"nome": "Máscara capilar hidratante", "variacoes": []}, {"nome": "Tintura para cabelo", "variacoes": ["Tintura castanho", "Tintura loiro", "Tintura preto"]}, {"nome": "Escova de cabelo", "variacoes": ["Escova de cabelo raquete"]}, {"nome": "Presilha", "variacoes": []}, {"nome": "Elástico de cabelo", "variacoes": []}, {"nome": "Sabonete líquido para as mãos", "variacoes": []}, {"nome": "Loção pós-barba", "variacoes": ["Bálsamo pós-barba"]}, {"nome": "Esfoliante corporal", "variacoes": []}, {"nome": "Sabonete líquido corporal", "variacoes": []}]}, {"categoria": "Bebê", "produtos": [{"nome": "Fralda", "variacoes": ["Fralda tamanho P", "Fralda tamanho M", "Fralda tamanho G", "Fralda tamanho XG", "Fralda pants P", "Fralda pants M", "Fralda pants G", "Fralda noturna"]}, {"nome": "Pomada para assadura", "variacoes": ["Creme preventivo de assaduras"]}, {"nome": "Papinha", "variacoes": ["Papinha de frutas", "Papinha de legumes", "Papinha de carne", "Papinha de frango com legumes", "Papinha de cereal"]}, {"nome": "Fórmula infantil", "variacoes": ["Fórmula infantil 1", "Fórmula infantil 2", "Fórmula infantil 3", "Fórmula infantil de soja", "Fórmula infantil sem lactose"]}, {"nome": "Cereal infantil", "variacoes": ["Cereal infantil de arroz", "Cereal infantil de aveia", "Cereal infantil de milho"]}, {"nome": "Mamadeira", "variacoes": ["Mamadeira de vidro", "Mamadeira de silicone", "Mamadeira de plástico", "Bico de mamadeira"]}, {"nome": "Chupeta", "variacoes": ["Chupeta de silicone", "Chupeta ortodôntica", "Chupeta de látex"]}, {"nome": "Óleo para bebê", "variacoes": ["Óleo de amêndoas para bebê"]}, {"nome": "Talco", "variacoes": ["Talco infantil", "Talco para pés"]}, {"nome": "Sabonete infantil", "variacoes": []}, {"nome": "Shampoo infantil", "variacoes": []}, {"nome": "Creme de assaduras", "variacoes": []}, {"nome": "Mordedor", "variacoes": ["Mordedor de silicone"]}]}, {"categoria": "Pet", "produtos": [{"nome": "Ração", "variacoes": ["Ração para cães adultos", "Ração para cães filhotes", "Ração para cães sênior", "Ração para cães de porte pequeno", "Ração para gatos adultos", "Ração para gatos filhotes", "Ração para gatos castrados"]}, {"nome": "Areia para gato", "variacoes": ["Areia para gatos sanitária", "Areia para gatos de sílica", "Areia para gatos de bentonita"]}, {"nome": "Petisco", "variacoes": ["Petisco para cães", "Petisco para gatos", "Biscoito para cães", "Osso de couro para cães"]}, {"nome": "Sachê pet", "variacoes": ["Sachê para gatos", "Sachê para cães"]}, {"nome": "Shampoo pet", "variacoes": ["Condicionador pet", "Shampoo pet para filhotes"]}]}, {"categoria": "Descartáveis e utilidades", "produtos": [{"nome": "Copo descartável", "variacoes": ["Copo descartável 200 ml", "Copo descartável 300 ml", "Copo descartável 400 ml", "Copo descartável de café", "Copo descartável térmico"]}, {"nome": "Prato descartável", "variacoes": ["Prato descartável pequeno", "Prato descartável grande", "Prato descartável fundo"]}, {"nome": "Guardanapo", "variacoes": ["Guardanapo de papel", "Guardanapo de papel colorido"]}, {"nome": "Talher descartável", "variacoes": ["Garfo descartável", "Faca descartável", "Colher descartável"]}, {"nome": "Papel-toalha", "variacoes": ["Papel-toalha rolo", "Papel-toalha interfolhado"]}, {"nome": "Papel alumínio", "variacoes": ["Papel alumínio 7,5 metros", "Papel alumínio 30 metros", "Papel alumínio reforçado"]}, {"nome": "Filme plástico", "variacoes": ["Filme PVC", "Filme plástico para alimentos"]}, {"nome": "Papel manteiga", "variacoes": ["Papel manteiga em rolo"]}, {"nome": "Saco para freezer", "variacoes": ["Saco para freezer pequeno", "Saco para freezer médio", "Saco para freezer grande", "Saco zip"]}, {"nome": "Palito", "variacoes": ["Palito de dente", "Palito para churrasco", "Palito de picolé"]}, {"nome": "Pilha", "variacoes": ["Pilha AA", "Pilha AAA", "Pilha alcalina", "Pilha 9V"]}, {"nome": "Fósforo", "variacoes": ["Caixa de fósforo", "Isqueiro"]}, {"nome": "Vela", "variacoes": ["Vela branca", "Vela aromática", "Vela de aniversário"]}, {"nome": "Lâmpada", "variacoes": ["Lâmpada LED", "Lâmpada fluorescente"]}, {"nome": "Canudo", "variacoes": ["Canudo de papel", "Canudo de plástico"]}, {"nome": "Forminha de doce", "variacoes": []}, {"nome": "Sacola plástica", "variacoes": ["Sacola plástica reutilizável"]}, {"nome": "Balão de festa", "variacoes": []}, {"nome": "Papel de presente", "variacoes": []}, {"nome": "Fita adesiva", "variacoes": ["Fita adesiva transparente", "Fita crepe"]}]}], "farmacia": [{"categoria": "Medicamentos", "produtos": [{"nome": "Dipirona", "variacoes": ["Dipirona comprimido", "Dipirona gotas", "Dipirona 500 mg"]}, {"nome": "Paracetamol", "variacoes": ["Paracetamol 500 mg", "Paracetamol 750 mg", "Paracetamol gotas infantil"]}, {"nome": "Ibuprofeno", "variacoes": ["Ibuprofeno 400 mg", "Ibuprofeno 600 mg", "Ibuprofeno gotas"]}, {"nome": "Antialérgico", "variacoes": ["Loratadina 10 mg", "Desloratadina", "Cetirizina 10 mg"]}, {"nome": "Antiácido", "variacoes": ["Antiácido em comprimido", "Antiácido líquido", "Hidróxido de alumínio"]}, {"nome": "Sal de frutas", "variacoes": ["Sal de frutas de limão", "Sal de frutas de laranja"]}, {"nome": "Descongestionante nasal", "variacoes": []}, {"nome": "Xarope para tosse", "variacoes": ["Xarope para tosse seca", "Xarope para tosse com catarro"]}, {"nome": "Pastilha para garganta", "variacoes": []}, {"nome": "Analgésico em gel", "variacoes": []}, {"nome": "Anti-inflamatório em gel", "variacoes": []}, {"nome": "Colírio", "variacoes": ["Colírio lubrificante", "Colírio para alergia"]}, {"nome": "Pomada analgésica", "variacoes": []}, {"nome": "Antisséptico bucal", "variacoes": []}, {"nome": "Soro de reidratação", "variacoes": []}, {"nome": "Antigripal", "variacoes": []}]}, {"categoria": "Primeiros socorros", "produtos": [{"nome": "Curativo adesivo", "variacoes": ["Curativo adesivo com almofada", "Curativo adesivo transparente", "Curativo infantil"]}, {"nome": "Gaze estéril", "variacoes": []}, {"nome": "Atadura", "variacoes": ["Atadura de crepe", "Atadura elástica"]}, {"nome": "Álcool em gel", "variacoes": ["Álcool em gel 70%", "Álcool em gel 500 ml"]}, {"nome": "Álcool 70%", "variacoes": []}, {"nome": "Água oxigenada", "variacoes": ["Água oxigenada 10 volumes", "Água oxigenada 30 volumes"]}, {"nome": "Soro fisiológico", "variacoes": ["Soro fisiológico nasal", "Soro fisiológico para lentes"]}, {"nome": "Termômetro", "variacoes": ["Termômetro digital", "Termômetro infantil", "Termômetro de ouvido"]}, {"nome": "Luvas descartáveis", "variacoes": ["Luvas de látex", "Luvas de nitrila"]}, {"nome": "Máscara descartável", "variacoes": ["Máscara PFF2", "Máscara cirúrgica"]}, {"nome": "Sais de reidratação oral", "variacoes": ["Sal de reidratação sabor laranja", "Sal de reidratação sabor limão"]}, {"nome": "Iodopovidona", "variacoes": []}, {"nome": "Clorexidina", "variacoes": []}, {"nome": "Compressa de gaze", "variacoes": []}, {"nome": "Esparadrapo", "variacoes": []}, {"nome": "Bolsa de gelo", "variacoes": ["Compressa de gel"]}]}, {"categoria": "Vitaminas e suplementos", "produtos": [{"nome": "Vitamina C", "variacoes": ["Vitamina C efervescente", "Vitamina C 1000 mg"]}, {"nome": "Vitamina D", "variacoes": ["Vitamina D 2000 UI", "Vitamina D gotas"]}, {"nome": "Complexo B", "variacoes": ["Complexo B comprimido", "Complexo B gotas"]}, {"nome": "Multivitamínico", "variacoes": ["Multivitamínico adulto", "Multivitamínico 50+"]}, {"nome": "Ômega 3", "variacoes": ["Ômega 3 1000 mg"]}, {"nome": "Colágeno", "variacoes": ["Colágeno em pó", "Colágeno em cápsulas"]}, {"nome": "Ferro", "variacoes": ["Sulfato ferroso"]}, {"nome": "Cálcio", "variacoes": ["Carbonato de cálcio", "Cálcio com vitamina D"]}, {"nome": "Magnésio", "variacoes": ["Magnésio dimalato", "Magnésio em pó"]}, {"nome": "Probiótico", "variacoes": ["Probiótico em cápsulas", "Probiótico em pó"]}, {"nome": "Whey protein", "variacoes": ["Whey protein baunilha", "Whey protein chocolate"]}, {"nome": "Vitamina B12", "variacoes": []}, {"nome": "Vitamina E", "variacoes": []}, {"nome": "Coenzima Q10", "variacoes": []}, {"nome": "Açafrão", "variacoes": ["Cúrcuma em cápsulas"]}]}, {"categoria": "Cuidados com a pele", "produtos": [{"nome": "Protetor solar", "variacoes": ["Protetor solar facial FPS 50", "Protetor solar corporal FPS 30", "Protetor solar infantil FPS 50"]}, {"nome": "Hidratante facial", "variacoes": ["Hidratante facial com ácido hialurônico", "Hidratante facial oil free"]}, {"nome": "Hidratante corporal", "variacoes": ["Hidratante corporal para pele seca"]}, {"nome": "Sabonete facial", "variacoes": ["Sabonete facial para pele oleosa", "Sabonete facial sem sabão"]}, {"nome": "Protetor labial", "variacoes": ["Protetor labial com FPS", "Manteiga de cacau"]}, {"nome": "Creme para mãos", "variacoes": []}, {"nome": "Pomada para assadura", "variacoes": ["Pomada de óxido de zinco"]}, {"nome": "Gel para acne", "variacoes": ["Gel para acne com peróxido", "Sabonete para acne"]}, {"nome": "Protetor solar em bastão", "variacoes": []}, {"nome": "Sérum facial", "variacoes": ["Sérum de vitamina C", "Sérum de niacinamida"]}, {"nome": "Esfoliante facial", "variacoes": []}, {"nome": "Creme para olhos", "variacoes": []}, {"nome": "Demaquilante", "variacoes": ["Demaquilante micelar"]}]}, {"categoria": "Higiene bucal", "produtos": [{"nome": "Escova de dente", "variacoes": ["Escova de dente macia", "Escova de dente infantil", "Escova de dente de bambu"]}, {"nome": "Creme dental", "variacoes": ["Creme dental sensível", "Creme dental clareador", "Creme dental infantil"]}, {"nome": "Fio dental", "variacoes": ["Fio dental encerado", "Fio dental de sabor"]}, {"nome": "Enxaguante bucal", "variacoes": ["Enxaguante bucal sem álcool", "Enxaguante bucal com clorexidina"]}, {"nome": "Gel para aftas", "variacoes": []}, {"nome": "Escova interdental", "variacoes": []}, {"nome": "Protetor de gengiva", "variacoes": []}, {"nome": "Pasta dental para aparelho", "variacoes": []}]}, {"categoria": "Cabelo e corpo", "produtos": [{"nome": "Shampoo", "variacoes": ["Shampoo anticaspa", "Shampoo hidratante"]}, {"nome": "Condicionador", "variacoes": ["Condicionador reparador"]}, {"nome": "Desodorante", "variacoes": ["Desodorante antitranspirante", "Desodorante roll-on"]}, {"nome": "Sabonete íntimo", "variacoes": []}, {"nome": "Absorvente", "variacoes": ["Absorvente noturno", "Absorvente diurno"]}, {"nome": "Lâmina de barbear", "variacoes": ["Lâmina de barbear descartável"]}, {"nome": "Creme depilatório", "variacoes": []}, {"nome": "Cera depilatória", "variacoes": []}, {"nome": "Máscara capilar", "variacoes": []}, {"nome": "Protetor de cabelo", "variacoes": ["Protetor térmico"]}]}, {"categoria": "Bebê", "produtos": [{"nome": "Fralda", "variacoes": ["Fralda tamanho P", "Fralda tamanho M", "Fralda tamanho G", "Fralda pants G"]}, {"nome": "Lenço umedecido", "variacoes": ["Lenço umedecido infantil"]}, {"nome": "Soro fisiológico infantil", "variacoes": ["Soro fisiológico infantil gotas"]}, {"nome": "Vitamina D infantil", "variacoes": ["Vitamina D infantil gotas"]}, {"nome": "Termômetro para bebê", "variacoes": []}, {"nome": "Aspirador nasal", "variacoes": []}, {"nome": "Soro para bebê", "variacoes": []}, {"nome": "Protetor solar bebê", "variacoes": []}]}, {"categoria": "Monitoramento de saúde", "produtos": [{"nome": "Medidor de pressão", "variacoes": ["Medidor de pressão de braço", "Medidor de pressão de pulso"]}, {"nome": "Glicosímetro", "variacoes": []}, {"nome": "Tiras para glicemia", "variacoes": []}, {"nome": "Oxímetro", "variacoes": ["Oxímetro de dedo"]}, {"nome": "Balança digital", "variacoes": []}, {"nome": "Nebulizador", "variacoes": []}]}, {"categoria": "Saúde da mulher", "produtos": [{"nome": "Teste de gravidez", "variacoes": []}, {"nome": "Coletor menstrual", "variacoes": []}, {"nome": "Absorvente interno", "variacoes": []}, {"nome": "Lubrificante íntimo", "variacoes": []}]}, {"categoria": "Ortopedia e conforto", "produtos": [{"nome": "Meia de compressão", "variacoes": []}, {"nome": "Joelheira", "variacoes": []}, {"nome": "Tornozeleira", "variacoes": []}, {"nome": "Almofada cervical", "variacoes": []}, {"nome": "Palmilha", "variacoes": ["Palmilha de gel", "Palmilha de silicone"]}]}], "pet": [{"categoria": "Ração e petiscos", "produtos": [{"nome": "Ração para gatos", "variacoes": ["Ração para gatos adultos", "Ração para gatos filhotes", "Ração para gatos castrados", "Ração para gatos sênior"]}, {"nome": "Ração para cães", "variacoes": ["Ração para cães adultos", "Ração para cães filhotes", "Ração para cães de porte pequeno", "Ração para cães de porte grande", "Ração para cães sênior"]}, {"nome": "Sachê", "variacoes": ["Sachê para gatos", "Sachê para cães", "Patê para gatos"]}, {"nome": "Petisco", "variacoes": ["Petisco para cães", "Petisco para gatos", "Biscoito para cães", "Snack dental para cães"]}, {"nome": "Ossinho de couro", "variacoes": []}, {"nome": "Leite para gatos", "variacoes": []}, {"nome": "Suplemento", "variacoes": ["Suplemento para cães", "Suplemento para gatos"]}]}, {"categoria": "Higiene e banho", "produtos": [{"nome": "Shampoo pet", "variacoes": ["Shampoo pet para cães", "Shampoo pet para gatos", "Shampoo pet para filhotes"]}, {"nome": "Condicionador pet", "variacoes": []}, {"nome": "Tapete higiênico", "variacoes": ["Tapete higiênico para cães"]}, {"nome": "Escova para pelos", "variacoes": ["Escova para pelos de gato", "Escova para pelos de cão"]}, {"nome": "Pente antipulgas", "variacoes": []}, {"nome": "Lenço umedecido pet", "variacoes": []}, {"nome": "Creme dental pet", "variacoes": []}, {"nome": "Cortador de unha pet", "variacoes": ["Cortador de unha para cães"]}]}, {"categoria": "Areia e acessórios", "produtos": [{"nome": "Areia para gatos", "variacoes": ["Areia sanitária", "Areia de sílica", "Areia de bentonita", "Areia de madeira"]}, {"nome": "Caixa de areia", "variacoes": ["Caixa sanitária com tampa", "Pá para areia"]}, {"nome": "Comedouro", "variacoes": ["Comedouro de inox", "Comedouro duplo"]}, {"nome": "Bebedouro para pets", "variacoes": ["Bebedouro automático"]}, {"nome": "Caminha pet", "variacoes": ["Caminha para cães", "Caminha para gatos"]}, {"nome": "Arranhador", "variacoes": ["Arranhador para gatos"]}, {"nome": "Caixa de transporte", "variacoes": ["Caixa de transporte para gatos", "Caixa de transporte para cães"]}]}, {"categoria": "Brinquedos", "produtos": [{"nome": "Varinha com penas", "variacoes": []}, {"nome": "Bolinha com guizo", "variacoes": []}, {"nome": "Bolinha de borracha", "variacoes": []}, {"nome": "Corda para cães", "variacoes": []}, {"nome": "Brinquedo mordedor", "variacoes": []}, {"nome": "Ratinho de pelúcia", "variacoes": []}]}, {"categoria": "Saúde e antipulgas", "produtos": [{"nome": "Antipulgas", "variacoes": ["Antipulgas pipeta", "Antipulgas comprimido", "Antipulgas spray"]}, {"nome": "Vermífugo", "variacoes": ["Vermífugo para cães", "Vermífugo para gatos"]}, {"nome": "Vitamina pet", "variacoes": []}, {"nome": "Repelente pet", "variacoes": ["Repelente pet spray"]}, {"nome": "Sal de reidratação pet", "variacoes": []}]}, {"categoria": "Coleiras e passeio", "produtos": [{"nome": "Coleira", "variacoes": ["Coleira para cães", "Coleira para gatos", "Coleira antipulgas"]}, {"nome": "Guia", "variacoes": ["Guia retrátil", "Guia de couro"]}, {"nome": "Peitoral", "variacoes": ["Peitoral para cães"]}, {"nome": "Plaquinha de identificação", "variacoes": []}, {"nome": "Saquinho para cocô", "variacoes": ["Saquinho biodegradável"]}]}], "casa": [{"categoria": "Limpeza", "produtos": [{"nome": "Vassoura", "variacoes": ["Vassoura de pelo", "Vassoura de piaçava", "Vassoura de nylon"]}, {"nome": "Rodo", "variacoes": ["Rodo de borracha", "Rodo de espuma"]}, {"nome": "Balde", "variacoes": ["Balde 10 litros", "Balde com espremedor"]}, {"nome": "Pano de chão", "variacoes": ["Pano de chão de microfibra"]}, {"nome": "Esponja", "variacoes": ["Esponja de louça dupla face", "Esponja de aço"]}, {"nome": "Luva de limpeza", "variacoes": []}, {"nome": "Desinfetante", "variacoes": ["Desinfetante de pinho", "Desinfetante floral"]}, {"nome": "Água sanitária", "variacoes": []}, {"nome": "Limpa-vidros", "variacoes": []}, {"nome": "Lustra-móveis", "variacoes": []}, {"nome": "Aspirador de pó", "variacoes": ["Aspirador vertical", "Aspirador de água"]}]}, {"categoria": "Cozinha e utensílios", "produtos": [{"nome": "Panela", "variacoes": ["Panela de pressão", "Panela antiaderente", "Panela de ferro"]}, {"nome": "Frigideira", "variacoes": ["Frigideira antiaderente", "Frigideira de ferro"]}, {"nome": "Faca", "variacoes": ["Faca de cozinha", "Faca de pão", "Faca de serra"]}, {"nome": "Tábua de corte", "variacoes": ["Tábua de bambu", "Tábua de plástico"]}, {"nome": "Escorredor de louça", "variacoes": []}, {"nome": "Escumadeira", "variacoes": []}, {"nome": "Jogo de talheres", "variacoes": []}, {"nome": "Jogo de pratos", "variacoes": ["Prato raso", "Prato fundo"]}, {"nome": "Jogo de copos", "variacoes": []}, {"nome": "Caneca", "variacoes": ["Xícara de café", "Caneca de porcelana"]}, {"nome": "Pote hermético", "variacoes": ["Jogo de potes herméticos"]}, {"nome": "Forma", "variacoes": ["Forma de bolo", "Forma de pizza"]}, {"nome": "Garrafa térmica", "variacoes": []}, {"nome": "Coador de café", "variacoes": ["Coador de pano", "Porta filtro"]}, {"nome": "Abridor", "variacoes": ["Abridor de garrafa", "Abridor de lata"]}, {"nome": "Batedor", "variacoes": ["Batedor de ovos", "Batedor de arame"]}]}, {"categoria": "Banheiro", "produtos": [{"nome": "Toalha de banho", "variacoes": ["Toalha de rosto", "Toalha de mão"]}, {"nome": "Tapete de banheiro", "variacoes": []}, {"nome": "Cortina de box", "variacoes": []}, {"nome": "Saboneteira", "variacoes": ["Saboneteira de parede"]}, {"nome": "Lixeira", "variacoes": ["Lixeira com pedal", "Lixeira de banheiro"]}, {"nome": "Dispenser de sabonete", "variacoes": ["Dispenser de sabonete líquido"]}, {"nome": "Balança digital", "variacoes": []}]}, {"categoria": "Quarto e cama", "produtos": [{"nome": "Lençol", "variacoes": ["Lençol de casal", "Lençol de solteiro", "Lençol com elástico"]}, {"nome": "Fronha", "variacoes": ["Fronha de algodão"]}, {"nome": "Travesseiro", "variacoes": ["Travesseiro de fibra", "Travesseiro de espuma"]}, {"nome": "Edredom", "variacoes": ["Edredom de inverno", "Edredom de verão"]}, {"nome": "Cobertor", "variacoes": ["Cobertor de casal", "Manta"]}, {"nome": "Cabide", "variacoes": ["Cabide de madeira", "Cabide antideslizante"]}, {"nome": "Organizador de gaveta", "variacoes": []}, {"nome": "Cesto de roupa suja", "variacoes": []}, {"nome": "Varal", "variacoes": ["Varal de chão", "Varal de teto"]}]}, {"categoria": "Sala e decoração", "produtos": [{"nome": "Vaso decorativo", "variacoes": ["Vaso de cerâmica"]}, {"nome": "Almofada", "variacoes": ["Almofada decorativa", "Capa de almofada"]}, {"nome": "Tapete", "variacoes": ["Tapete de sala", "Tapete antiderrapante"]}, {"nome": "Cortina", "variacoes": ["Cortina blackout", "Cortina de linho"]}, {"nome": "Quadro decorativo", "variacoes": []}, {"nome": "Espelho", "variacoes": ["Espelho de parede"]}, {"nome": "Porta-retrato", "variacoes": []}, {"nome": "Vela aromática", "variacoes": []}, {"nome": "Abajur", "variacoes": ["Abajur de mesa"]}, {"nome": "Planta artificial", "variacoes": []}, {"nome": "Cachepô", "variacoes": ["Vaso para plantas"]}]}, {"categoria": "Iluminação", "produtos": [{"nome": "Lâmpada", "variacoes": ["Lâmpada LED", "Lâmpada amarela", "Lâmpada de filamento"]}, {"nome": "Extensão elétrica", "variacoes": ["Extensão com 3 tomadas", "Extensão com 5 tomadas"]}, {"nome": "Fita de LED", "variacoes": []}, {"nome": "Filtro de linha", "variacoes": []}]}, {"categoria": "Ferramentas e reparos", "produtos": [{"nome": "Martelo", "variacoes": []}, {"nome": "Chave de fenda", "variacoes": ["Jogo de chaves de fenda"]}, {"nome": "Furadeira", "variacoes": ["Furadeira de impacto"]}, {"nome": "Fita isolante", "variacoes": []}, {"nome": "Fita adesiva", "variacoes": ["Fita crepe", "Fita adesiva transparente"]}, {"nome": "Cola", "variacoes": ["Cola instantânea", "Cola de silicone", "Cola para madeira"]}, {"nome": "Silicone", "variacoes": ["Silicone para banheiro", "Silicone acético"]}, {"nome": "Parafusos", "variacoes": ["Kit de parafusos", "Buchas"]}, {"nome": "Pregos", "variacoes": []}, {"nome": "Trena", "variacoes": []}, {"nome": "Fita veda rosca", "variacoes": []}]}, {"categoria": "Organização", "produtos": [{"nome": "Caixa organizadora", "variacoes": ["Caixa organizadora com tampa", "Caixa organizadora plástica"]}, {"nome": "Cesto organizador", "variacoes": []}, {"nome": "Prateleira de parede", "variacoes": []}, {"nome": "Gancho adesivo", "variacoes": []}, {"nome": "Etiquetas adesivas", "variacoes": []}, {"nome": "Saco a vácuo", "variacoes": []}]}, {"categoria": "Jardim e área de serviço", "produtos": [{"nome": "Regador", "variacoes": ["Regador de plástico"]}, {"nome": "Mangueira de jardim", "variacoes": []}, {"nome": "Adubo", "variacoes": ["Adubo orgânico", "Terra adubada"]}, {"nome": "Sementes", "variacoes": ["Sementes de flores", "Sementes de hortaliças"]}, {"nome": "Tesoura de poda", "variacoes": []}, {"nome": "Ferro de passar", "variacoes": []}, {"nome": "Tábua de passar", "variacoes": ["Tábua de passar roupa"]}]}]};
+// Biblioteca de ícones das listas. Cada ícone é [id, nome, desenho SVG em viewBox 24, traço].
+// Cada tipo de lista tem 30 ícones; o neutro serve para tipos criados pela pessoa.
+const ICONES_LISTA = {};
+const ICONE_PADRAO = { mercado: 'mercado.cesta', farmacia: 'farmacia.cruz', pet: 'pet.gato', casa: 'casa.casa', neutro: 'neutro.lista' };
+ICONES_LISTA.neutro = [
+  ['neutro.lista', 'Neutro', '<path d="M8 6h12M8 12h12M8 18h8"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>']
+];
+
+ICONES_LISTA.mercado = [
+  ['mercado.cesta', 'Cesta', '<path d="M3.5 9.5h17l-1.8 9.5H5.3z"/><path d="M8 9.5l3.5-5M16 9.5l-3.5-5"/>'],
+  ['mercado.sacola', 'Sacola', '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>'],
+  ['mercado.carrinho', 'Carrinho', '<path d="M3 4h2.5l2.2 10.5h10.6L20 7.5H6.5"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>'],
+  ['mercado.maca', 'Maçã', '<path d="M12 8c-2.5-1.5-7-1-7 3.8C5 16 7.5 20 9.5 20c1 0 1.6-.6 2.5-.6s1.5.6 2.5.6c2 0 4.5-4 4.5-8.2C19 7 14.5 6.5 12 8z"/><path d="M12 8c0-2.2 1.2-3.6 3.2-4.5"/>'],
+  ['mercado.banana', 'Banana', '<path d="M4.5 5.5c-.2 8.5 4.5 13.5 13.5 13.5 1 0 1.8-.1 2.3-.3-7.5-.4-11.5-5-11.8-13.2z"/><path d="M4.5 5.5l-1-1.5"/>'],
+  ['mercado.uva', 'Uva', '<circle cx="9" cy="9" r="2.2"/><circle cx="15" cy="9" r="2.2"/><circle cx="12" cy="13.5" r="2.2"/><circle cx="9" cy="18" r="2.2"/><circle cx="15" cy="18" r="2.2"/><path d="M12 6.8V3.5"/>'],
+  ['mercado.folha', 'Folha', '<path d="M5 19c0-8.5 5-13.5 14-14.5-.5 9-5.5 14.5-14 14.5z"/><path d="M5 19l7.5-7.5"/>'],
+  ['mercado.peixe', 'Peixe', '<path d="M3 12c2.8-4.2 6.8-5.6 11.5-3L20 6.5v11L14.5 15C9.8 17.6 5.8 16.2 3 12z"/><circle cx="7.5" cy="11" r=".9" fill="currentColor"/>'],
+  ['mercado.bife', 'Carne', '<path d="M5 9.5c0-3 2.5-5 6-5s7 2.5 7 6c0 2.5-1 3.5-.5 5.5.8 3-2 4.5-5.5 4.5S5 18.5 5 15.5c0-2.5 0-4 0-6z"/>'],
+  ['mercado.ovo', 'Ovo', '<path d="M12 3c3 0 6 6 6 11a6 6 0 0 1-12 0c0-5 3-11 6-11z"/>'],
+  ['mercado.pao', 'Pão', '<path d="M4 11a8 6 0 0 1 16 0v7.5H4z"/><path d="M8 9.5l2 2.5M12 8.5l2 2.5M16 9.5l-1 2"/>'],
+  ['mercado.leite', 'Leite', '<path d="M7 9.5L10 4.5h4l3 5v11H7z"/><path d="M7 13.5h10"/>'],
+  ['mercado.garrafa', 'Garrafa', '<path d="M10 3h4v3.5l2.5 3V20h-9V9.5l2.5-3z"/><path d="M9 13.5h6"/>'],
+  ['mercado.copo', 'Copo', '<path d="M5.5 5h13l-1.6 15H7.1z"/><path d="M5 9.5h14"/>'],
+  ['mercado.queijo', 'Queijo', '<path d="M3 17.5L20 7v10.5z"/><circle cx="9" cy="14" r="1.1"/><circle cx="14.5" cy="12" r=".9"/>'],
+  ['mercado.sorvete', 'Sorvete', '<path d="M7 11.5a5 5 0 0 1 10 0z"/><path d="M7 11.5l5 9.5 5-9.5"/>'],
+  ['mercado.bolo', 'Bolo', '<path d="M4 12h16v8H4z"/><path d="M4 16c2 0 2-1.5 4-1.5S10 16 12 16s2-1.5 4-1.5 2 1.5 4 1.5"/><path d="M12 12V8.5"/><path d="M12 6.5c0-.8.5-1 .8-1.5"/>'],
+  ['mercado.pote', 'Pote', '<path d="M7 9h10v11.5H7z"/><path d="M6 5.5h12V9H6z"/><path d="M10 13.5h4"/>'],
+  ['mercado.papel', 'Papel higiênico', '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/>'],
+  ['mercado.limpeza', 'Limpeza', '<path d="M8.5 10h7v10.5h-7z"/><path d="M10.5 10V7h3v3"/><path d="M13.5 7.5h3"/>'],
+  ['mercado.etiqueta', 'Encarte', '<path d="M3.5 12.5V4.5h8l9 9-8 8z"/><circle cx="8" cy="8.5" r="1.3"/>'],
+  ['mercado.batata', 'Legumes', '<path d="M5 14c0-4 3-7.5 7-7.5s7 3.5 7 7.5-3 5.5-7 5.5-7-1.5-7-5.5z"/><path d="M8.5 11.5h.01M14 14.5h.01M12 10h.01"/>'],
+  ['mercado.hamburguer', 'Lanche', '<path d="M4 10.5c0-3.5 3.6-6 8-6s8 2.5 8 6z"/><path d="M3.5 13.5h17"/><path d="M4.5 17h15"/><path d="M4.5 17c0 1.5 1 2.5 2 2.5h11c1 0 2-1 2-2.5"/>'],
+  ['mercado.pizza', 'Pizza', '<path d="M3.5 6.5h17L12 20.5z"/><circle cx="10" cy="11" r="1"/><circle cx="14" cy="10" r="1"/>'],
+  ['mercado.pacote', 'Pacote', '<path d="M5.5 7.5h13l-.8 13H6.3z"/><path d="M8.5 7.5l1.5-3.5h4l1.5 3.5"/><path d="M9 12.5h6"/>'],
+  ['mercado.chocolate', 'Chocolate', '<rect x="4.5" y="4.5" width="15" height="15" rx="2"/><path d="M4.5 9.5h15M4.5 14.5h15M9.5 4.5v15"/>'],
+  ['mercado.cafe', 'Café', '<path d="M4.5 9.5h12v6a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/><path d="M16.5 11h1.5a2 2 0 0 1 0 4h-1.5"/><path d="M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3"/>'],
+  ['mercado.fruta', 'Fruta', '<circle cx="12" cy="13" r="7.5"/><path d="M12 5.5V3.5M12 5.5c1.5-1.5 3.5-1.5 4.5-.5"/>'],
+  ['mercado.lista', 'Lista de compras', '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M8.5 12h7M8.5 16h5"/>'],
+  ['mercado.vinho', 'Bebida', '<path d="M10 3h4v5.5c2 1.8 3 3.2 3 5.5V20H7v-6c0-2.3 1-3.7 3-5.5z"/><path d="M7 14.5h10"/>']
+];
+
+ICONES_LISTA.farmacia = [
+  ['farmacia.cruz', 'Cruz', '<path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"/>'],
+  ['farmacia.capsula', 'Cápsula', '<rect x="2.5" y="8" width="19" height="8" rx="4" transform="rotate(-30 12 12)"/><path d="M12 8.2v7.6" transform="rotate(-30 12 12)"/>'],
+  ['farmacia.comprimido', 'Comprimido', '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/>'],
+  ['farmacia.pilulas', 'Pílulas', '<rect x="2.5" y="8.5" width="9" height="5" rx="2.5" transform="rotate(-35 7 11)"/><circle cx="16.5" cy="14.5" r="5"/>'],
+  ['farmacia.termometro', 'Termômetro', '<path d="M10 14.2V5.5a2 2 0 0 1 4 0v8.7a4 4 0 1 1-4 0z"/><path d="M12 9.5v7"/>'],
+  ['farmacia.gota', 'Gota', '<path d="M12 3.5c3.5 4.5 6 7.7 6 11a6 6 0 0 1-12 0c0-3.3 2.5-6.5 6-11z"/><path d="M9 15a3 3 0 0 0 3 3"/>'],
+  ['farmacia.gotas', 'Conta-gotas', '<path d="M10 3h4v2h-4z"/><path d="M9 5h6v7a3 3 0 0 1-6 0z"/><path d="M12 15v4.5"/>'],
+  ['farmacia.coracao', 'Coração', '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>'],
+  ['farmacia.estetoscopio', 'Estetoscópio', '<path d="M6 3.5v5.5a4.5 4.5 0 0 0 9 0V3.5"/><path d="M10.5 14.5v.5a5 5 0 0 0 10 0v-.5"/><circle cx="20.5" cy="11.5" r="2"/>'],
+  ['farmacia.seringa', 'Seringa', '<path d="M18.5 2.5l3 3-2.5 2.5-3-3z"/><path d="M15 6l-9.5 9.5"/><path d="M5.5 14.5l-2 6 6-2 2-2z"/>'],
+  ['farmacia.curativo', 'Curativo', '<rect x="2.5" y="8" width="19" height="8" rx="2"/><rect x="9" y="10" width="6" height="4" rx=".5"/>'],
+  ['farmacia.kit', 'Kit de socorro', '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4.5h6V7"/><path d="M12 10v6M9 13h6"/>'],
+  ['farmacia.frasco', 'Frasco', '<path d="M9.5 3.5h5M10.5 3.5v4.5L7 12.5V20h10v-7.5l-3.5-4.5V3.5"/>'],
+  ['farmacia.pomada', 'Pomada', '<rect x="6" y="3.5" width="9" height="5" rx="1"/><path d="M8 8.5v8.5a3.5 3.5 0 0 0 7 0V8.5"/>'],
+  ['farmacia.sol', 'Protetor solar', '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>'],
+  ['farmacia.lua', 'Sono', '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>'],
+  ['farmacia.olho', 'Colírio', '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'],
+  ['farmacia.dente', 'Dente', '<path d="M7.5 4c-2.3 0-3.7 1.9-3.3 4.2.4 2.3 1.5 4.3 1.8 6.8.3 2.5.8 5 2.2 5 1.6 0 1.5-3 3.2-3s1.6 3 3.3 3 1.6-2.5 1.4-5c-.2-2.5 1.1-4 1.1-6.3C17 6 15.5 4 13.5 4c-1.6 0-2.4 1-4.5 1s-1.4-1-1.5-1z"/>'],
+  ['farmacia.balanca', 'Balança', '<path d="M12 4v16M7.5 20h9M4.5 7.5h15"/><path d="M4.5 7.5l-2.5 6a2.5 2.5 0 0 0 5 0z"/><path d="M19.5 7.5l-2.5 6a2.5 2.5 0 0 0 5 0z"/>'],
+  ['farmacia.pressao', 'Pressão', '<circle cx="12" cy="13" r="8.5"/><path d="M12 13l3.5-3.5M12 5.5v1.5M7 13H5.5M17 13h1.5"/>'],
+  ['farmacia.oximetro', 'Oxímetro', '<rect x="3" y="8" width="18" height="8" rx="2.5"/><path d="M7 12h3l1.5-2 1.5 4 1.5-2h3"/>'],
+  ['farmacia.batimento', 'Batimentos', '<path d="M2.5 12h4.5l2-4.5 3.5 9 2.5-6 1.5 1.5h5.5"/>'],
+  ['farmacia.mascara', 'Máscara', '<path d="M3.5 8.5c5 3 12 3 17 0v5.5c0 3.5-3.5 6-8.5 6S3.5 17.5 3.5 14z"/>'],
+  ['farmacia.oculos', 'Óculos', '<circle cx="7" cy="14" r="3.5"/><circle cx="17" cy="14" r="3.5"/><path d="M10.5 14h3M3.5 13L2 8M20.5 13L22 8"/>'],
+  ['farmacia.nebulizador', 'Nebulizador', '<path d="M7 9.5h10v9H7z"/><path d="M9.5 9.5V6h5v3.5"/><path d="M12 18.5v2"/>'],
+  ['farmacia.algodao', 'Algodão', '<path d="M7.5 18.5h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.5A3.2 3.2 0 0 0 7.5 18.5z"/>'],
+  ['farmacia.tesoura', 'Tesoura', '<circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8 8.5L20 18M8 15.5L20 6"/>'],
+  ['farmacia.osso', 'Ortopedia', '<path d="M7.5 7.5a2.5 2.5 0 1 0-3.5 3.5l9 9a2.5 2.5 0 1 0 3.5-3.5z"/>'],
+  ['farmacia.mamadeira', 'Bebê', '<path d="M9.5 4.5h5v2.5h-5z"/><path d="M8.5 7h7a1 1 0 0 1 1 1v11a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 7.5 19V8a1 1 0 0 1 1-1z"/><path d="M11 3.5h2"/>'],
+  ['farmacia.mulher', 'Saúde da mulher', '<circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 18h6"/>']
+];
+
+ICONES_LISTA.pet = [
+  ['pet.gato', 'Gato', '<path d="M6 9L5 4l4.5 2.5Q12 5.8 14.5 6.5L19 4l-1 5C19.5 10.2 20 11.8 20 13.5 20 17.8 16.4 20 12 20S4 17.8 4 13.5c0-1.7.5-3.3 2-4.5z"/><circle cx="9.5" cy="13" r="1" fill="currentColor"/><circle cx="14.5" cy="13" r="1" fill="currentColor"/><path d="M11.2 15.6h1.6l-.8.9z" fill="currentColor"/><path d="M12 16.5q-1 1-2 .3M12 16.5q1 1 2 .3M1.5 13L4 13.5M1.5 16L4 15M22.5 13L20 13.5M22.5 16L20 15"/>'],
+  ['pet.cachorro', 'Cachorro', '<path d="M6 5.5l1.5 5.5c-1.8.8-2.5 3-2.5 5 0 2.8 2.5 5 6.5 5s6.5-2.2 6.5-5c0-2-.7-4.2-2.5-5L18 5.5 14 8h-4z"/><path d="M10 14.5h.01M14 14.5h.01"/>'],
+  ['pet.pata', 'Patinha', '<ellipse cx="12" cy="16" rx="4.5" ry="3.8"/><circle cx="5.8" cy="10.5" r="1.9"/><circle cx="9.5" cy="6.2" r="1.9"/><circle cx="14.5" cy="6.2" r="1.9"/><circle cx="18.2" cy="10.5" r="1.9"/>'],
+  ['pet.osso', 'Osso', '<path d="M8 8.5a2.5 2.5 0 1 0-3.5-3.5 2.5 2.5 0 0 0-1 3.5l7 7a2.5 2.5 0 1 0 3.5 3.5 2.5 2.5 0 0 0 1-3.5z"/>'],
+  ['pet.aquario', 'Aquário', '<path d="M3.5 5.5h17v13h-17z"/><path d="M3.5 9.5c3 1.5 6 1.5 9 0M8 13h5l1.5 1.2L13 15.5H8z"/>'],
+  ['pet.passaro', 'Pássaro', '<path d="M3.5 13.5c3-6.5 9-8.5 14.5-6-2 0-3 1.5-3 3.5 0 3-3 5.5-7 5.5-2 0-3.5-.8-4.5-3z"/><path d="M17.5 7.5l3-1.5-1 3"/><path d="M9 14.5c0 0 1.5 1 3.5 0"/>'],
+  ['pet.coleira', 'Coleira', '<path d="M4 8.5c4.5 3 11.5 3 16 0"/><rect x="10.5" y="13" width="3" height="4" rx="1"/>'],
+  ['pet.tigela', 'Comedouro', '<path d="M3 10.5h18c0 5-4 8.5-9 8.5s-9-3.5-9-8.5z"/><path d="M8 21h8"/>'],
+  ['pet.caixa-areia', 'Caixa de areia', '<path d="M3.5 8h17v11h-17z"/><path d="M3.5 12h17"/><path d="M8 8l1-3h6l1 3"/>'],
+  ['pet.bolinha', 'Bolinha', '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 3 2.5 14 0 17M12 3.5c-2.5 3-2.5 14 0 17"/>'],
+  ['pet.escova', 'Escova', '<rect x="4" y="4.5" width="16" height="6" rx="2"/><path d="M7 10.5v9M11 10.5v9M15 10.5v9M19 10.5v5"/>'],
+  ['pet.varinha', 'Brinquedo de penas', '<path d="M4 20L14 10"/><path d="M14 10c1-3 3.5-5.5 6.5-6.5-.5 3-2.5 6-5.5 6.5"/>'],
+  ['pet.transportadora', 'Transportadora', '<rect x="3" y="7" width="18" height="12" rx="3"/><path d="M3 12h18M10 7V4.5h4V7M11 13.5h2"/>'],
+  ['pet.racao', 'Ração', '<path d="M5 8h14l-1 12.5H6z"/><path d="M9 8V5.5h6V8"/><path d="M8.5 14.5h7"/>'],
+  ['pet.petisco', 'Petisco', '<path d="M4 12a2 2 0 1 1 0-4 2 2 0 0 1 2-3h8a2 2 0 0 1 2 3 2 2 0 1 1 0 4 2 2 0 0 1-2 3H6a2 2 0 0 1-2-3z"/>'],
+  ['pet.lacinho', 'Lacinho', '<path d="M12 12L4.5 8.5v7z"/><path d="M12 12l7.5-3.5v7z"/><circle cx="12" cy="12" r="1.4"/>'],
+  ['pet.banho', 'Banho', '<path d="M8 4h8l-1 3H9z"/><path d="M12 7v3M8 14v1.5M12 14v1.5M16 14v1.5M10 18.5v1.5M14 18.5v1.5"/>'],
+  ['pet.shampoo', 'Shampoo', '<path d="M9 4h6v3H9z"/><path d="M8 7h8v13H8z"/><path d="M10 11h4"/>'],
+  ['pet.pipeta', 'Antipulgas', '<path d="M10 3h4v3h-4z"/><path d="M9 6h6v8a3 3 0 0 1-6 0z"/><path d="M12 17v3"/>'],
+  ['pet.caminha', 'Caminha', '<path d="M3 16.5h18v3H3z"/><path d="M4 16.5c0-3 3-5 8-5s8 2 8 5"/>'],
+  ['pet.saquinho', 'Saquinho', '<path d="M6 8.5h12l-1.5 11.5h-9z"/><path d="M9 8.5a3 3 0 0 1 6 0"/>'],
+  ['pet.peixe', 'Peixinho', '<path d="M3 12c2.8-4.2 6.8-5.6 11.5-3L20 6.5v11L14.5 15C9.8 17.6 5.8 16.2 3 12z"/><circle cx="7.5" cy="11" r=".9" fill="currentColor"/>'],
+  ['pet.rato', 'Ratinho', '<ellipse cx="11" cy="14" rx="6" ry="4.5"/><circle cx="6.5" cy="9.5" r="2"/><path d="M17 14h3.5"/>'],
+  ['pet.gaiola', 'Gaiola', '<path d="M5 20V8a7 7 0 0 1 14 0v12"/><path d="M9 20V9M12 20V8M15 20V9M4 20h16"/>'],
+  ['pet.guizo', 'Guizo', '<path d="M12 3.5a2 2 0 0 1 2 2v.5a5 5 0 0 1 4 5v2.5l2 2.5H4l2-2.5V11a5 5 0 0 1 4-5v-.5a2 2 0 0 1 2-2z"/><circle cx="12" cy="19.5" r="1.8"/>'],
+  ['pet.tartaruga', 'Tartaruga', '<path d="M5 13a7 6 0 0 1 14 0z"/><path d="M5 13c0 2 1 3 2.5 3h9c1.5 0 2.5-1 2.5-3M9 16v3M15 16v3"/>'],
+  ['pet.coelho', 'Coelho', '<ellipse cx="12" cy="15" rx="5.5" ry="4.5"/><path d="M9.5 11.5V4.5M14.5 11.5V4.5"/>'],
+  ['pet.mochila', 'Mochila', '<path d="M7 9V6.5a5 5 0 0 1 10 0V9"/><rect x="5" y="9" width="14" height="11" rx="3"/><path d="M9 13.5h6"/>'],
+  ['pet.tapete', 'Tapete higiênico', '<rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7v10M11 7v10M15 7v10"/>'],
+  ['pet.estrela', 'Petisco premiado', '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/>']
+];
+
+ICONES_LISTA.casa = [
+  ['casa.casa', 'Casa', '<path d="M3.5 11L12 4l8.5 7v9.5h-17z"/><path d="M9.5 20.5v-6h5v6"/>'],
+  ['casa.sofa', 'Sofá', '<path d="M4 10.5V8a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 8v2.5"/><path d="M2.5 12.5a2 2 0 0 1 4 0V15h11v-2.5a2 2 0 0 1 4 0V18h-19z"/><path d="M2.5 18v2M21.5 18v2"/>'],
+  ['casa.cama', 'Cama', '<path d="M3 18.5V6M3 14.5h18v4M21 14.5V12a3 3 0 0 0-3-3h-7v5.5"/><circle cx="7" cy="11.5" r="2"/>'],
+  ['casa.chave', 'Chave', '<circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M17.5 12v3.5M20.5 12v2.5"/>'],
+  ['casa.planta', 'Planta', '<path d="M7 13.5h10l-1.5 7h-7z"/><path d="M12 13.5V9.5"/><path d="M12 9.5c-3-.5-5.5-2.5-5.5-5.5 3 0 5.5 2 5.5 5.5zM12 9.5c3-.5 5.5-2.5 5.5-5.5-3 0-5.5 2-5.5 5.5z"/>'],
+  ['casa.lampada', 'Lâmpada', '<path d="M9.5 17.5h5M10.5 20.5h3"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5.9 1.2.9 2h5.4c0-.8.3-1.5.9-2A6 6 0 0 0 12 3z"/>'],
+  ['casa.vaso', 'Vaso sanitário', '<path d="M5 4.5h14v4H5z"/><path d="M6.5 8.5h11v3.5a5.5 5.5 0 0 1-11 0z"/>'],
+  ['casa.chuveiro', 'Chuveiro', '<path d="M9 3.5h6l-1 3H10z"/><path d="M12 6.5v2.5"/><path d="M8 13.5v1.5M12 13.5v1.5M16 13.5v1.5M10 18.5v1.5M14 18.5v1.5"/>'],
+  ['casa.panela', 'Panela', '<path d="M4 10.5h16v7.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 18z"/><path d="M2.5 13.5H4M20 13.5h1.5"/>'],
+  ['casa.martelo', 'Martelo', '<path d="M4 20l9-9"/><path d="M11.5 4.5h7v4.5l-3 1-4-4z"/>'],
+  ['casa.ferramenta', 'Ferramenta', '<path d="M14.5 5.5a4 4 0 0 0-5 5.2L4 15.2 5.8 17l4.5-5.5a4 4 0 0 0 5.2-5z"/>'],
+  ['casa.janela', 'Janela', '<rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M12 3.5v17M4 12h16"/>'],
+  ['casa.porta', 'Porta', '<path d="M6 21V4.5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1V21M3 21h18"/><path d="M14.5 12.5v.5"/>'],
+  ['casa.relogio', 'Relógio', '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'],
+  ['casa.vassoura', 'Vassoura', '<path d="M14.5 3.5l-6 9.5"/><path d="M7 13h9.5l-1.8 3.5H8.8z"/><path d="M9 16.5l-1.5 4M11.5 16.5v4M14 16.5l1.5 4"/>'],
+  ['casa.balde', 'Balde', '<path d="M5 8.5h14l-2 12H7z"/><path d="M5 8.5c0-2.3 3.1-3.5 7-3.5s7 1.2 7 3.5"/>'],
+  ['casa.cabide', 'Cabide', '<path d="M12 7.5a2 2 0 1 0-2-2"/><path d="M12 7.5v2.5L3.5 16.5h17z"/>'],
+  ['casa.presente', 'Presente', '<rect x="3.5" y="9" width="17" height="11.5" rx="1"/><path d="M3.5 13h17M12 9v11.5"/><path d="M12 9c-1.5-3.5-5.5-3.5-5.5-1S12 9 12 9zM12 9c1.5-3.5 5.5-3.5 5.5-1S12 9 12 9z"/>'],
+  ['casa.cadeira', 'Cadeira', '<path d="M7 3.5v8.5h10V3.5"/><path d="M7 12v8.5M17 12v8.5"/>'],
+  ['casa.mesa', 'Mesa', '<path d="M3 8.5h18"/><path d="M5.5 8.5V20M18.5 8.5V20"/>'],
+  ['casa.espelho', 'Espelho', '<ellipse cx="12" cy="10" rx="6" ry="7.5"/><path d="M12 17.5V21M8.5 21h7"/>'],
+  ['casa.prateleira', 'Prateleira', '<path d="M3.5 3.5v17M20.5 3.5v17M3.5 9h17M3.5 15h17"/>'],
+  ['casa.caixa', 'Mudança', '<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5L12 12l9-4.5M12 12v9"/>'],
+  ['casa.armario', 'Armário', '<rect x="4.5" y="3" width="15" height="18" rx="1"/><path d="M12 3v18M10 12v.5M14 12v.5"/>'],
+  ['casa.lixeira', 'Lixeira', '<path d="M4.5 6.5h15M9.5 6.5V4h5v2.5M6.5 6.5l1 14h9l1-14"/>'],
+  ['casa.varal', 'Varal', '<path d="M3 5.5h18"/><path d="M6 5.5v5M10.5 5.5v7M15 5.5v4.5M18.5 5.5v6"/>'],
+  ['casa.escada', 'Escada', '<path d="M8 3.5v17M16 3.5v17M8 7.5h8M8 11.5h8M8 15.5h8"/>'],
+  ['casa.tomada', 'Tomada', '<rect x="5.5" y="5.5" width="13" height="13" rx="3"/><path d="M9.5 9.5v2.5M14.5 9.5v2.5M12 16v2"/>'],
+  ['casa.tapete', 'Tapete', '<ellipse cx="12" cy="13" rx="9" ry="5.5"/><ellipse cx="12" cy="13" rx="4.5" ry="2.5"/>'],
+  ['casa.ventilador', 'Ventilador', '<circle cx="12" cy="12" r="1.8"/><path d="M12 10.2c-1-3.6 1-6.7 4.5-6.2.3 2.4-1.2 4.8-4.5 6.2zM13.8 12c3.6 1 6.7-1 6.2-4.5-2.4-.3-4.8 1.2-6.2 4.5zM12 13.8c1 3.6-1 6.7-4.5 6.2-.3-2.4 1.2-4.8 4.5-6.2zM10.2 12c-3.6-1-6.7 1-6.2 4.5 2.4.3 4.8-1.2 6.2-4.5z"/>']
+];
+
+
+(function () {
+  'use strict';
+
+  const KEY = 'lista-mercado.v2';
+  const KEY_ANTIGA = 'lista-mercado.v1';
+  let feitosVisiveis = [];
+  const TONS = [
+    ['Verde', '#4FB07C'], ['Azul', '#6FA3EA'], ['Amarelo', '#F2C94C'],
+    ['Laranja', '#F09A52'], ['Rosa', '#EE7AAE'], ['Roxo', '#B392E8'],
+    ['Ciano', '#56C4D0'], ['Cinza', '#A9B5AD'], ['Vermelho', '#E8736B']
+  ];
+  const DESTAQUES = [['Verde', '#2F7D54'], ['Azul', '#3360C2'], ['Laranja', '#B4541A'], ['Vinho', '#8E2A50']];
+  const FONTES = {
+    padrao: { nome: 'Padrão', disp: "'Bricolage Grotesque'", corpo: "'Atkinson Hyperlegible'", scale: 1 },
+    lexend: { nome: 'Lexend', disp: "'Lexend'", corpo: "'Lexend'", scale: 1 },
+    literata: { nome: 'Literata', disp: "'Literata'", corpo: "'Literata'", scale: 1 },
+    caveat: { nome: 'Manuscrita', disp: "'Caveat'", corpo: "'Caveat'", scale: 1.2 }
+  };
+  const EXEMPLO = [
+    ['Tomate italiano', 'Hortifruti', true, '', 2],
+    ['Banana prata', 'Hortifruti', false, 'Bem madura, para hoje', 6],
+    ['Água mineral sem gás', 'Bebidas', false, '', 5],
+    ['Queijo mussarela fatiado', 'Frios', true, '', 1],
+    ['Pão francês', 'Padaria', false, '', 10],
+    ['Óleo de soja', 'Mercearia', false, 'Marca de preferência', 2],
+    ['Papel higiênico folha dupla', 'Higiene pessoal', false, '', 1]
+  ];
+  const GRIP = '<svg viewBox="0 0 14 22" aria-hidden="true"><circle cx="3" cy="4" r="2"/><circle cx="11" cy="4" r="2"/><circle cx="3" cy="11" r="2"/><circle cx="11" cy="11" r="2"/><circle cx="3" cy="18" r="2"/><circle cx="11" cy="18" r="2"/></svg>';
+  const ICONES = {
+    ajustes: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+    voltar: '<path d="M15 18l-6-6 6-6"/>',
+    mais: '<path d="M12 5v14M5 12h14"/>',
+    menu: '<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+    cesta: '<path d="M3.5 9.5h17l-1.8 9.5H5.3z"/><path d="M8 9.5l3.5-5M16 9.5l-3.5-5"/>',
+    cruz: '<path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"/>',
+    lista: '<path d="M8 6h12M8 12h12M8 18h8"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>'
+  };
+
+  const $ = id => document.getElementById(id);
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const icone = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONES[n] || ''}</svg>`;
+  const reduzido = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const TIPOS_PADRAO = ['mercado', 'farmacia', 'pet', 'casa'];
+  const NOMES_PADRAO = { mercado: 'Mercado', farmacia: 'Farmácia', pet: 'Pet shop', casa: 'Casa' };
+  const svgIc = inner => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  const iconeDef = id => {
+    if (!id) return null;
+    for (const f of Object.keys(ICONES_LISTA)) {
+      const x = ICONES_LISTA[f].find(i => i[0] === id);
+      if (x) return x;
+    }
+    return null;
+  };
+  const familiaDo = t => (S.tipos[t] && S.tipos[t].familia) || 'neutro';
+  // Cor do desenho que mais contrasta com o fundo (preto ou branco)
+  const corTexto = hex => {
+    const c = [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255)
+      .map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+    const L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    return L > 0.18 ? '#111111' : '#FFFFFF';
+  };
+  // Ícone efetivo de uma lista: a escolha salva ou o padrão do tipo
+  function iconeDo(l, cfg) {
+    cfg = cfg || l.icone || {};
+    const def = iconeDef(cfg.id) || iconeDef(ICONE_PADRAO[familiaDo(l.tipo)]) || iconeDef(ICONE_PADRAO.neutro);
+    const temFundo = typeof cfg.fundo === 'number' && TONS[cfg.fundo];
+    const fundo = temFundo ? TONS[cfg.fundo][1] : '';
+    const cor = cfg.cor === 'branco' ? '#FFFFFF' : cfg.cor === 'preto' ? '#111111' : (temFundo ? corTexto(fundo) : '');
+    return { id: def[0], rotulo: def[1], inner: def[2], estilo: (fundo ? `--ibg:${fundo};` : '') + (cor ? `--ifg:${cor};` : '') };
+  }
+  const iconeHTML = l => { const ic = iconeDo(l); return `<span class="ico-tipo" style="${ic.estilo}">${svgIc(ic.inner)}</span>`; };
+  const iconeDoTipo = t => {
+    const d = iconeDef(ICONE_PADRAO[familiaDo(t)]) || iconeDef(ICONE_PADRAO.neutro);
+    return `<span class="ico-tipo">${svgIc(d[2])}</span>`;
+  };
+
+  // ---------- Dados e persistência ----------
+  function corredoresBase(t) {
+    const nomes = (BANCOS[t] || []).map(c => c.categoria).filter(n => n !== 'Outros');
+    return [...new Set(nomes)].concat(['Outros']);
+  }
+  function isBase(t, nome) { return corredoresBase(t).includes(nome); }
+  function novosCorredores(nomes) { return nomes.map((n, i) => ({ nome: n, cor: i % TONS.length, ativo: true })); }
+  function normItem(i) { return Object.assign({ encarte: false, obs: '', feito: false, qtd: 1 }, i); }
+  function estadoNovo() {
+    return {
+      v: 2,
+      tipos: Object.fromEntries(TIPOS_PADRAO.map(t => [t, {
+        nome: NOMES_PADRAO[t], familia: t, corredores: novosCorredores(corredoresBase(t))
+      }])),
+      listas: [], custom: [],
+      ajustes: { tema: 'sistema', destaque: 0, fonte: 'padrao', tamanho: 17 }
+    };
+  }
+  function completar(s) {
+    const b = estadoNovo();
+    s.tipos = s.tipos || {};
+    TIPOS_PADRAO.forEach(t => {
+      if (!s.tipos[t]) s.tipos[t] = b.tipos[t];
+      s.tipos[t].familia = t;
+    });
+    Object.keys(s.tipos).forEach(t => {
+      const tp = s.tipos[t];
+      tp.familia = tp.familia || 'neutro';
+      tp.corredores = tp.corredores || [];
+      if (!tp.corredores.some(c => c.nome === 'Outros')) tp.corredores.push({ nome: 'Outros', cor: 0, ativo: true });
+    });
+    s.custom = s.custom || [];
+    s.listas = s.listas || [];
+    s.ajustes = Object.assign(b.ajustes, s.ajustes || {});
+    s.listas.forEach(l => {
+      l.modo = l.modo || 'manual';
+      l.pastas = l.pastas || [];
+      l.itens = (l.itens || []).map(normItem);
+      if (!s.tipos[l.tipo]) l.tipo = 'mercado';
+    });
+    return s;
+  }
+  function carregar() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) { s = null; }
+    if (s && s.v === 2) return completar(s);
+    let velho = null;
+    try { velho = JSON.parse(localStorage.getItem(KEY_ANTIGA)); } catch (e) { velho = null; }
+    const n = estadoNovo();
+    if (velho && Array.isArray(velho.itens)) {
+      const cores = velho.cores || {};
+      const cs = (velho.corredores || []).map((nome, i) => ({
+        nome, cor: typeof cores[nome] === 'number' ? cores[nome] : i % TONS.length, ativo: true
+      }));
+      if (cs.length) n.tipos.mercado.corredores = cs;
+      n.custom = (velho.custom || []).map(p => Object.assign({ tipo: 'mercado' }, p));
+      n.ajustes = Object.assign(n.ajustes, velho.ajustes || {});
+      n.listas.push({ id: uid(), nome: 'Lista do mercado', tipo: 'mercado', modo: velho.modo || 'manual',
+        exemplo: !!velho.exemplo, itens: velho.itens.map(normItem) });
+    } else {
+      n.listas.push({ id: uid(), nome: 'Lista do mercado', tipo: 'mercado', modo: 'manual', exemplo: true,
+        itens: EXEMPLO.map(([t, c, e, o, q]) => normItem({ id: uid(), texto: t, cat: c, encarte: e, obs: o, qtd: q })) });
+    }
+    return completar(n);
+  }
+  let S = carregar();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* sem armazenamento */ } }
+
+  // ---------- Consultas ----------
+  const listaAtual = () => S.listas.find(l => l.id === listaId) || null;
+  const tipoNome = t => (S.tipos[t] ? S.tipos[t].nome : 'Lista');
+  const corredoresDo = t => (S.tipos[t] ? S.tipos[t].corredores : []);
+  const corCorr = (t, nome) => {
+    const c = corredoresDo(t).find(x => x.nome === nome);
+    return TONS[c ? c.cor % TONS.length : 0][1];
+  };
+  function produtos(t) {
+    const base = (BANCOS[t] || []).flatMap(c => c.produtos.map(p => ({ nome: p.nome, variacoes: p.variacoes, cat: c.categoria })));
+    return base.concat(S.custom.filter(p => p.tipo === t));
+  }
+  function achar(t, texto) {
+    const n = norm(texto);
+    return produtos(t).find(p => norm(p.nome) === n || p.variacoes.some(v => norm(v) === n)) || null;
+  }
+  function sugerir(t, q) {
+    const n = norm(q);
+    if (!n) return [];
+    const out = [];
+    produtos(t).forEach(p => {
+      const pn = norm(p.nome);
+      const inicio = pn.startsWith(n) || pn.split(/\s+/).some(w => w.startsWith(n));
+      const vs = inicio ? p.variacoes.slice(0, 12) : p.variacoes.filter(v => norm(v).includes(n)).slice(0, 12);
+      if (inicio || vs.length) out.push({ p, vs, rank: pn.startsWith(n) ? 0 : inicio ? 1 : 2 });
+    });
+    return out.sort((a, b) => a.rank - b.rank || a.p.nome.localeCompare(b.p.nome, 'pt-BR')).slice(0, 8);
+  }
+  function optsCats(t, sel) {
+    return corredoresDo(t)
+      .filter(c => c.ativo || c.nome === sel)
+      .map(c => `<option${c.nome === sel ? ' selected' : ''}>${esc(c.nome)}</option>`).join('');
+  }
+
+  // ---------- Telas ----------
+  let tela = 'home', listaId = null, listaMenuId = null, tipoEscolhido = 'mercado';
+  let pastaAtual = 'todas', icAlvo = null, icRasc = null, pastaEdId = null;
+  let corrTipo = null, corrCorNova = 0, nomeAlvo = null, edId = null, edQtd = 1;
+  const recentes = new Set();
+  const pulsos = new Set();
+  let arr = null;
+
+  function mostrarTela() {
+    $('tela-home').hidden = tela !== 'home';
+    $('tela-lista').hidden = tela !== 'lista';
+    $('barra-nova').hidden = tela !== 'home';
+    $('composer').hidden = tela !== 'lista';
+    const el = tela === 'home' ? $('tela-home') : $('tela-lista');
+    el.classList.remove('entrar');
+    void el.offsetWidth;
+    el.classList.add('entrar');
+    window.scrollTo(0, 0);
+  }
+  function abrirLista(id) {
+    listaId = id; tela = 'lista'; pastaAtual = 'todas';
+    renderLista(); mostrarTela(); fecharTudo();
+  }
+  function irParaHome() {
+    tela = 'home'; listaId = null;
+    renderHome(); mostrarTela();
+  }
+  function render() { if (tela === 'home') renderHome(); else renderLista(); }
+
+  function renderHome() {
+    const n = S.listas.length;
+    $('resumo-home').textContent = n ? `${n} ${n === 1 ? 'lista salva' : 'listas salvas'} neste aparelho` : 'Nenhuma lista ainda';
+    $('cartoes').innerHTML = S.listas.map(l => {
+      const pend = l.itens.filter(i => !i.feito);
+      const total = l.itens.length;
+      const pct = total ? Math.round((total - pend.length) / total * 100) : 0;
+      const enc = pend.filter(i => i.encarte).length;
+      const sub = !total ? 'sem itens ainda' : !pend.length ? 'tudo comprado'
+        : `${pend.length} para comprar${enc ? `, ${enc} no encarte` : ''}`;
+      return `<li class="cartao"><button type="button" class="abrir" data-abrir="${l.id}">` +
+        iconeHTML(l) +
+        `<span class="txt"><span class="nome">${esc(l.nome)}</span>` +
+        `<span class="sub">${esc(tipoNome(l.tipo))}: ${sub}</span>` +
+        `<span class="barra" aria-hidden="true"><span style="width:${pct}%"></span></span></span></button>` +
+        `<button type="button" class="mais" data-menu="${l.id}" aria-label="Opções de ${esc(l.nome)}" aria-haspopup="dialog">${icone('menu')}</button></li>`;
+    }).join('');
+    $('vazio-home').hidden = n > 0;
+  }
+
+  function corOfCat(l, cat) { return corCorr(l.tipo, cat); }
+
+  function itemHTML(l, it, manual) {
+    const enc = it.encarte && !it.feito;
+    const cls = ['item', enc ? 'encarte' : '', it.feito ? 'feito' : '', recentes.has(it.id) ? 'entrar' : '']
+      .filter(Boolean).join(' ');
+    const pTag = pastaAtual === 'todas' && it.pasta ? nomePasta(l, it.pasta) : '';
+    const tags = (enc || manual || pTag)
+      ? `<span class="meta">${enc ? '<span class="tag promo">Encarte</span>' : ''}${pTag ? `<span class="tag pasta">${esc(pTag)}</span>` : ''}${manual ? `<span class="tag">${esc(it.cat)}</span>` : ''}</span>`
+      : '';
+    const obs = it.obs ? `<span class="obs">${esc(it.obs)}</span>` : '';
+    const qtd = it.feito
+      ? `<span class="qtd-fixa">${it.qtd}</span>`
+      : `<span class="qtd-ctl" role="group" aria-label="Quantidade de ${esc(it.texto)}">` +
+        `<button type="button" class="qb" data-act="menos" aria-label="Diminuir a quantidade"${it.qtd <= 1 ? ' disabled' : ''}>−</button>` +
+        `<span class="qv${pulsos.has(it.id) ? ' pulsar' : ''}" data-qv>${it.qtd}</span>` +
+        `<button type="button" class="qb" data-act="mais" aria-label="Aumentar a quantidade">+</button></span>`;
+    const grip = manual && !it.feito
+      ? `<button type="button" class="grip" data-act="arrastar" aria-label="Arrastar para mudar a ordem">${GRIP}</button>`
+      : '';
+    return `<li class="${cls}" data-id="${it.id}" style="--tint:${corOfCat(l, it.cat)}">` +
+      `<button type="button" class="check" data-act="feito" aria-pressed="${it.feito}" aria-label="${it.feito ? 'Desmarcar' : 'Marcar como comprado'}: ${esc(it.texto)}"><span class="bola"></span></button>` +
+      `<button type="button" class="corpo" data-act="editar"><span class="nome">${esc(it.texto)}</span>${tags}${obs}</button>` +
+      qtd + grip + `</li>`;
+  }
+
+  function itensDaVista(l) {
+    if (pastaAtual === 'sem') return l.itens.filter(i => !i.pasta);
+    if (pastaAtual !== 'todas') return l.itens.filter(i => i.pasta === pastaAtual);
+    return l.itens;
+  }
+  function nomePasta(l, id) {
+    const p = (l.pastas || []).find(x => x.id === id);
+    return p ? p.nome : '';
+  }
+  function renderPastas(l) {
+    const ps = l.pastas || [];
+    const pend = f => l.itens.filter(i => !i.feito && f(i)).length;
+    let h = `<button type="button" class="pasta-op" data-pasta="todas" aria-pressed="${pastaAtual === 'todas'}">Todas<small>${pend(() => true)}</small></button>`;
+    ps.forEach(p => {
+      h += `<button type="button" class="pasta-op" data-pasta="${p.id}" aria-pressed="${pastaAtual === p.id}">${esc(p.nome)}<small>${pend(i => i.pasta === p.id)}</small></button>` +
+        `<button type="button" class="pasta-ed" data-pasta-editar="${p.id}" aria-label="Editar pasta ${esc(p.nome)}">✎</button>`;
+    });
+    if (ps.length) {
+      h += `<button type="button" class="pasta-op" data-pasta="sem" aria-pressed="${pastaAtual === 'sem'}">Sem pasta<small>${pend(i => !i.pasta)}</small></button>`;
+    }
+    h += '<button type="button" class="pasta-op novo" data-pasta-nova="1">+ Pasta</button>';
+    $('pastas').innerHTML = h;
+  }
+  function renderLista() {
+    const l = listaAtual();
+    if (!l) { irParaHome(); return; }
+    if (pastaAtual !== 'todas' && pastaAtual !== 'sem' && !(l.pastas || []).some(p => p.id === pastaAtual)) pastaAtual = 'todas';
+    const vis = itensDaVista(l);
+    const pend = vis.filter(i => !i.feito);
+    const feitos = vis.filter(i => i.feito);
+    const enc = pend.filter(i => i.encarte).length;
+    const unid = pend.reduce((a, i) => a + i.qtd, 0);
+    const ic = iconeDo(l);
+    const bi = $('btn-icone-lista');
+    bi.setAttribute('style', ic.estilo);
+    bi.innerHTML = svgIc(ic.inner);
+    $('titulo-lista').textContent = l.nome;
+    $('resumo').textContent = !l.itens.length ? `${tipoNome(l.tipo)}, nada na lista ainda`
+      : !vis.length ? 'Nada nesta pasta ainda'
+      : !pend.length ? 'Tudo comprado'
+      : `${pend.length} ${pend.length === 1 ? 'item' : 'itens'}, ${unid} ${unid === 1 ? 'unidade' : 'unidades'}${enc ? `, ${enc} no encarte` : ''}`;
+
+    let h = '';
+    if (l.modo === 'manual') {
+      if (pend.length) h = `<ul class="lista">${pend.map(i => itemHTML(l, i, true)).join('')}</ul>`;
+    } else {
+      const ativos = corredoresDo(l.tipo).filter(c => c.ativo);
+      ativos.forEach((c, k) => {
+        const its = pend.filter(i => i.cat === c.nome);
+        if (!its.length) return;
+        h += `<section class="corr"><div class="placa" style="--tint:${TONS[c.cor % TONS.length][1]}">` +
+          `<span class="num">${k + 1}</span><h2>${esc(c.nome)}</h2><span class="qtd-corr">${its.length}</span></div>` +
+          `<ul class="lista">${its.map(i => itemHTML(l, i, false)).join('')}</ul></section>`;
+      });
+      const fora = pend.filter(i => !ativos.some(c => c.nome === i.cat));
+      if (fora.length) {
+        h += `<section class="corr fora"><div class="placa neutra"><h2>Fora dos corredores ativos</h2>` +
+          `<span class="qtd-corr">${fora.length}</span></div><ul class="lista">${fora.map(i => itemHTML(l, i, true)).join('')}</ul></section>`;
+      }
+    }
+    $('conteudo').innerHTML = h;
+    $('feitos').innerHTML = feitos.map(i => itemHTML(l, i, false)).join('');
+    feitosVisiveis = feitos.map(i => i.id);
+    $('sec-feitos').hidden = !feitos.length;
+    $('vazio').hidden = vis.length > 0;
+    $('vazio').textContent = l.itens.length && !vis.length
+      ? 'Nenhum item nesta pasta ainda. Digite abaixo para adicionar aqui.'
+      : 'Sua lista está vazia. Digite um produto embaixo. Ao digitar “ol”, aparecem óleo e as variações.';
+    $('dica').hidden = !l.exemplo;
+    renderPastas(l);
+    document.querySelectorAll('[data-modo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.modo === l.modo)));
+    recentes.clear();
+    pulsos.clear();
+  }
+
+  // ---------- Itens ----------
+  function adicionar(texto, cat, salvar) {
+    const l = listaAtual();
+    texto = String(texto).trim();
+    if (!l || !texto) return;
+    const pasta = (l.pastas || []).some(p => p.id === pastaAtual) ? pastaAtual : null;
+    const igual = l.itens.find(i => !i.feito && (i.pasta || null) === pasta && norm(i.texto) === norm(texto));
+    if (igual) {
+      igual.qtd++;
+      pulsos.add(igual.id);
+    } else {
+      if (salvar && !achar(l.tipo, texto)) S.custom.push({ nome: texto, variacoes: [], cat: cat, tipo: l.tipo });
+      const it = normItem({ id: uid(), texto: texto, cat: cat });
+      if (pasta) it.pasta = pasta;
+      l.itens.push(it);
+      recentes.add(it.id);
+    }
+    l.exemplo = false;
+    save();
+    $('entrada').value = '';
+    renderSug();
+    render();
+    $('entrada').focus();
+  }
+
+  function renderSug() {
+    const l = listaAtual();
+    const q = $('entrada').value;
+    const box = $('sugestoes');
+    if (!l || !norm(q)) { box.hidden = true; box.innerHTML = ''; return; }
+    let h = sugerir(l.tipo, q).map(r =>
+      `<div class="sug"><button type="button" class="sug-prod" data-add="${esc(r.p.nome)}" data-cat="${esc(r.p.cat)}">${esc(r.p.nome)}<span class="cat">${esc(r.p.cat)}</span></button>` +
+      (r.vs.length ? `<div class="chips">${r.vs.map(v => `<button type="button" class="chip" data-add="${esc(v)}" data-cat="${esc(r.p.cat)}">${esc(v)}</button>`).join('')}</div>` : '') +
+      `</div>`).join('');
+    if (!achar(l.tipo, q)) {
+      h += `<form class="novo" id="novo"><label for="novo-cat">Não está na lista? Salvar “${esc(q.trim())}” no banco, no corredor:</label>` +
+        `<div class="linha2"><select id="novo-cat">${optsCats(l.tipo, 'Outros')}</select><button class="btn" type="submit">Adicionar</button></div></form>`;
+    }
+    box.innerHTML = h;
+    box.hidden = !h;
+  }
+
+  function alternarFeito(l, it, li) {
+    if (it.feito) { it.feito = false; save(); return render(); }
+    li.classList.add('saindo');
+    setTimeout(() => { it.feito = true; save(); render(); }, reduzido() ? 0 : 240);
+  }
+
+  function onLista(e) {
+    const b = e.target.closest('[data-act]');
+    const l = listaAtual();
+    if (!b || !l) return;
+    const li = b.closest('li');
+    const it = l.itens.find(i => i.id === (li && li.dataset.id));
+    if (!it) return;
+    const act = b.dataset.act;
+    if (act === 'feito') return alternarFeito(l, it, li);
+    if (act === 'editar') return abrirEditor(it.id);
+    if (act === 'mais' || act === 'menos') {
+      const novo = act === 'mais' ? it.qtd + 1 : Math.max(1, it.qtd - 1);
+      if (novo === it.qtd) return;
+      it.qtd = novo;
+      save();
+      const qv = li.querySelector('[data-qv]');
+      if (qv) {
+        qv.textContent = String(novo);
+        qv.classList.remove('pulsar');
+        void qv.offsetWidth;
+        qv.classList.add('pulsar');
+      }
+      const menos = li.querySelector('[data-act="menos"]');
+      if (menos) menos.disabled = novo <= 1;
+    }
+  }
+  $('conteudo').addEventListener('click', onLista);
+  $('feitos').addEventListener('click', onLista);
+
+  // Arrastar: a alça segue o dedo, os outros itens abrem espaço, o item solto assenta
+  const conteudo = $('conteudo');
+  conteudo.addEventListener('pointerdown', e => {
+    const g = e.target.closest('.grip');
+    if (!g) return;
+    e.preventDefault();
+    const li = g.closest('li');
+    const ul = li.parentElement;
+    const lis = [...ul.children];
+    arr = { li: li, ul: ul, lis: lis, from: lis.indexOf(li), to: lis.indexOf(li), y0: e.clientY,
+      tops: lis.map(x => x.offsetTop), hs: lis.map(x => x.offsetHeight) };
+    li.classList.add('arrastando');
+    g.setPointerCapture(e.pointerId);
+  });
+  conteudo.addEventListener('pointermove', e => {
+    if (!arr) return;
+    const lis = arr.lis, from = arr.from, tops = arr.tops, hs = arr.hs;
+    const dy = e.clientY - arr.y0;
+    const meio = tops[from] + hs[from] / 2 + dy;
+    let to = 0;
+    lis.forEach((x, k) => { if (k !== from && tops[k] + hs[k] / 2 < meio) to++; });
+    arr.to = to;
+    arr.li.style.transform = `translateY(${dy}px) scale(1.02)`;
+    lis.forEach((x, k) => {
+      if (k === from) return;
+      let s = 0;
+      if (from < to && k > from && k <= to) s = tops[k - 1] - tops[k];
+      else if (to < from && k >= to && k < from) s = tops[k + 1] - tops[k];
+      x.style.transform = s ? `translateY(${s}px)` : '';
+    });
+  });
+  function soltar() {
+    if (!arr) return;
+    const a = arr;
+    arr = null;
+    const alvo = a.to === a.from ? 0 : a.tops[a.to] - a.tops[a.from];
+    const dur = reduzido() ? 0 : 220;
+    a.li.classList.remove('arrastando');
+    a.li.style.transition = `transform ${dur}ms cubic-bezier(.2, .8, .2, 1)`;
+    a.li.style.transform = `translateY(${alvo}px)`;
+    setTimeout(() => commitOrdem(a), dur + 20);
+  }
+  function commitOrdem(a) {
+    const l = listaAtual();
+    if (!l) return;
+    const ids = a.lis.map(x => x.dataset.id);
+    const movido = ids.splice(a.from, 1)[0];
+    ids.splice(a.to, 0, movido);
+    const porId = {};
+    l.itens.forEach(i => { porId[i.id] = i; });
+    const pos = [];
+    l.itens.forEach((i, k) => { if (ids.includes(i.id)) pos.push(k); });
+    pos.forEach((k, j) => { l.itens[k] = porId[ids[j]]; });
+    save();
+    render();
+  }
+  conteudo.addEventListener('pointerup', soltar);
+  conteudo.addEventListener('pointercancel', soltar);
+
+  // ---------- Campo de digitar ----------
+  $('entrada').addEventListener('input', renderSug);
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const l = listaAtual();
+    const texto = $('entrada').value.trim();
+    if (!l || !texto) return;
+    const m = achar(l.tipo, texto);
+    if (m) {
+      const canon = (m.variacoes || []).find(x => norm(x) === norm(texto)) || m.nome;
+      return adicionar(canon, m.cat, false);
+    }
+    const first = sugerir(l.tipo, texto)[0];
+    if (first) return adicionar(first.rank === 2 ? first.vs[0] : first.p.nome, first.p.cat, false);
+    const novo = $('novo-cat');
+    adicionar(texto, novo ? novo.value : 'Outros', true);
+  });
+  $('sugestoes').addEventListener('click', e => {
+    const b = e.target.closest('[data-add]');
+    if (b) adicionar(b.dataset.add, b.dataset.cat, false);
+  });
+  $('sugestoes').addEventListener('submit', e => {
+    if (e.target.id !== 'novo') return;
+    e.preventDefault();
+    adicionar($('entrada').value, $('novo-cat').value, true);
+  });
+
+  // ---------- Listas: criar, abrir, opções ----------
+  $('btn-nova').innerHTML = icone('mais') + '<span>Nova lista</span>';
+  $('btn-nova').addEventListener('click', abrirNovaLista);
+  $('btn-voltar').innerHTML = icone('voltar');
+  $('btn-voltar').addEventListener('click', irParaHome);
+  $('btn-menu-lista').innerHTML = icone('menu');
+  $('btn-menu-lista').addEventListener('click', () => { if (listaId) abrirMenu(listaId); });
+  $('btn-ajustes').innerHTML = icone('ajustes');
+  $('btn-ajustes').addEventListener('click', () => { renderAjustes(); abrirFolha('folha-ajustes'); });
+  $('cartoes').addEventListener('click', e => {
+    const a = e.target.closest('[data-abrir]');
+    if (a) return abrirLista(a.dataset.abrir);
+    const m = e.target.closest('[data-menu]');
+    if (m) abrirMenu(m.dataset.menu);
+  });
+  document.querySelectorAll('[data-modo]').forEach(b => b.addEventListener('click', () => {
+    const l = listaAtual();
+    if (!l) return;
+    l.modo = b.dataset.modo;
+    save();
+    render();
+  }));
+  $('btn-dica-limpar').addEventListener('click', () => {
+    const l = listaAtual();
+    if (!l) return;
+    const antes = l.itens.slice(), exemploAntes = l.exemplo;
+    l.itens = []; l.exemplo = false;
+    save(); render();
+    avisarDesfazer('Lista esvaziada.', () => { l.itens = antes; l.exemplo = exemploAntes; save(); render(); });
+  });
+
+  // ---------- Desfazer (8 segundos) e tirar comprados ----------
+  let desfazerAcao = null, desfazerTimer = 0;
+  function fecharDesfazer() { clearTimeout(desfazerTimer); desfazerAcao = null; $('desfazer').hidden = true; }
+  function avisarDesfazer(texto, acao) {
+    desfazerAcao = acao;
+    $('desfazer-texto').textContent = texto;
+    $('desfazer').hidden = false;
+    clearTimeout(desfazerTimer);
+    desfazerTimer = setTimeout(fecharDesfazer, 8000);
+  }
+  $('desfazer-botao').addEventListener('click', () => {
+    const acao = desfazerAcao;
+    fecharDesfazer();
+    if (acao) acao();
+  });
+  $('btn-tirar-feitos').addEventListener('click', () => {
+    const l = listaAtual();
+    if (!l || !feitosVisiveis.length) return;
+    const ids = new Set(feitosVisiveis);
+    const antes = l.itens.slice();
+    const quantos = l.itens.filter(i => ids.has(i.id)).length;
+    l.itens = l.itens.filter(i => !ids.has(i.id));
+    save(); render();
+    avisarDesfazer(quantos === 1 ? '1 item tirado da lista.' : quantos + ' itens tirados da lista.',
+      () => { l.itens = antes; save(); render(); });
+  });
+
+  function abrirNovaLista() {
+    if (!S.tipos[tipoEscolhido]) tipoEscolhido = 'mercado';
+    $('nova-nome').value = tipoNome(tipoEscolhido);
+    renderTipos();
+    abrirFolha('folha-nova-lista');
+  }
+  function renderTipos() {
+    $('tipos-escolha').innerHTML = Object.keys(S.tipos).map(t =>
+      `<button type="button" class="tipo-op" data-tipo-op="${esc(t)}" aria-pressed="${t === tipoEscolhido}">` +
+      `${iconeDoTipo(t)}<span>${esc(tipoNome(t))}</span></button>`
+    ).join('') +
+    `<button type="button" class="tipo-op novo-tipo" data-novo-tipo="1"><span class="ico-tipo">${icone('mais')}</span><span>Criar tipo de lista</span></button>`;
+  }
+  $('tipos-escolha').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.novoTipo) return abrirNovoTipo();
+    const t = b.dataset.tipoOp;
+    if (!t) return;
+    const nomeCampo = $('nova-nome');
+    const atual = nomeCampo.value.trim();
+    if (!atual || atual === tipoNome(tipoEscolhido)) nomeCampo.value = tipoNome(t);
+    tipoEscolhido = t;
+    renderTipos();
+  });
+  $('nova-criar').addEventListener('click', () => {
+    const nome = $('nova-nome').value.trim() || tipoNome(tipoEscolhido);
+    const l = { id: uid(), nome: nome, tipo: tipoEscolhido, modo: 'manual', exemplo: false, itens: [] };
+    S.listas.push(l);
+    save();
+    fecharTudo();
+    listaId = l.id; tela = 'lista'; pastaAtual = 'todas';
+    renderLista(); mostrarTela();
+  });
+
+  function abrirNovoTipo() {
+    $('tipo-nome').value = '';
+    $('tipo-corredores').value = '';
+    abrirFolha('folha-novo-tipo');
+  }
+  $('tipo-criar').addEventListener('click', () => {
+    const nome = $('tipo-nome').value.trim();
+    if (!nome) return;
+    const key = 't' + uid();
+    const linhas = $('tipo-corredores').value.split('\n').map(x => x.trim()).filter(Boolean);
+    const nomes = [...new Set(linhas.filter(n => n !== 'Outros').concat(['Outros']))];
+    S.tipos[key] = { nome: nome, familia: 'neutro', corredores: novosCorredores(nomes) };
+    tipoEscolhido = key;
+    save();
+    abrirNovaLista();
+  });
+
+  function abrirMenu(id) {
+    const l = S.listas.find(x => x.id === id);
+    if (!l) return;
+    listaMenuId = id;
+    $('t-menu').textContent = l.nome;
+    resetarMenu();
+    abrirFolha('folha-menu');
+  }
+  function resetarMenu() {
+    document.querySelectorAll('#folha-menu [data-acao]').forEach(b => {
+      b.dataset.confirma = '';
+      b.textContent = b.dataset.rotulo;
+    });
+  }
+  $('folha-menu').addEventListener('click', e => {
+    const b = e.target.closest('[data-acao]');
+    if (!b) return;
+    const l = S.listas.find(x => x.id === listaMenuId);
+    if (!l) return;
+    const acao = b.dataset.acao;
+    if (acao === 'renomear') {
+      nomeAlvo = l.id;
+      $('nome-valor').value = l.nome;
+      return abrirFolha('folha-nome');
+    }
+    if (acao === 'icone') return abrirIcone(l.id);
+    if (acao === 'copiar') return abrirCopia(l);
+    if (acao === 'corredores') return abrirCorredores(l.tipo);
+    if (acao === 'tirar') {
+      l.itens = l.itens.filter(i => !i.feito);
+      save(); fecharTudo(); render();
+      return;
+    }
+    if (acao === 'esvaziar' || acao === 'excluir') {
+      if (b.dataset.confirma !== '1') {
+        b.dataset.confirma = '1';
+        b.textContent = 'Toque de novo para confirmar';
+        return;
+      }
+      resetarMenu();
+      if (acao === 'esvaziar') {
+        l.itens = []; l.exemplo = false;
+        save(); fecharTudo(); render();
+        return;
+      }
+      S.listas = S.listas.filter(x => x.id !== l.id);
+      save(); fecharTudo();
+      if (listaId === l.id) irParaHome(); else render();
+    }
+  });
+  $('nome-salvar').addEventListener('click', () => {
+    const l = S.listas.find(x => x.id === nomeAlvo);
+    const t = $('nome-valor').value.trim();
+    if (l && t) l.nome = t;
+    save(); fecharTudo(); render();
+  });
+
+  // ---------- Corredores ----------
+  function abrirCorredores(t) {
+    corrTipo = t;
+    $('corr-titulo').textContent = 'Corredores de ' + tipoNome(t);
+    $('corr-nome').value = '';
+    renderCorrLista();
+    renderCorrCores();
+    abrirFolha('folha-corredores');
+  }
+  function renderCorrLista() {
+    const cs = corredoresDo(corrTipo);
+    $('corr-lista').innerHTML = cs.map((c, k) => {
+      const excl = isBase(corrTipo, c.nome) ? ''
+        : `<button type="button" class="excluir" data-excluir-c="${esc(c.nome)}" data-rotulo="Excluir">Excluir</button>`;
+      return `<div class="corr-linha${c.ativo ? '' : ' inativo'}">` +
+        `<span class="num">${k + 1}</span>` +
+        `<button type="button" class="bolinha" data-cor-de="${esc(c.nome)}" aria-label="Trocar a cor de ${esc(c.nome)}"><span style="--c:${TONS[c.cor % TONS.length][1]}"></span></button>` +
+        `<span class="corr-nome">${esc(c.nome)}</span>` +
+        `<button type="button" class="chave" role="switch" aria-checked="${c.ativo}" data-ativar="${esc(c.nome)}">${c.ativo ? 'Ativo' : 'Desativado'}<span class="knob" aria-hidden="true"></span></button>` +
+        `<button type="button" class="seta" data-subir-c="${esc(c.nome)}" aria-label="Subir ${esc(c.nome)}"${k === 0 ? ' disabled' : ''}>↑</button>` +
+        `<button type="button" class="seta" data-descer-c="${esc(c.nome)}" aria-label="Descer ${esc(c.nome)}"${k === cs.length - 1 ? ' disabled' : ''}>↓</button>` +
+        excl + `</div>`;
+    }).join('');
+  }
+  function renderCorrCores() {
+    $('corr-cores').innerHTML = TONS.map((c, i) =>
+      `<button type="button" data-cor-nova="${i}" aria-label="Cor ${c[0]}" aria-pressed="${i === corrCorNova}" style="--c:${c[1]}"></button>`).join('');
+  }
+  $('corr-cores').addEventListener('click', e => {
+    const b = e.target.closest('[data-cor-nova]');
+    if (!b) return;
+    corrCorNova = Number(b.dataset.corNova);
+    renderCorrCores();
+  });
+  $('folha-corredores').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.hasAttribute('data-cor-nova') || b.id === 'corr-add' || b.hasAttribute('data-fechar')) return;
+    const cs = corredoresDo(corrTipo);
+    const ds = b.dataset;
+    if (ds.corDe !== undefined) {
+      const c = cs.find(x => x.nome === ds.corDe);
+      if (c) c.cor = (c.cor + 1) % TONS.length;
+    } else if (ds.ativar !== undefined) {
+      const c = cs.find(x => x.nome === ds.ativar);
+      if (c) c.ativo = !c.ativo;
+    } else if (ds.subirC !== undefined || ds.descerC !== undefined) {
+      const nome = ds.subirC !== undefined ? ds.subirC : ds.descerC;
+      const k = cs.findIndex(x => x.nome === nome);
+      const j = ds.subirC !== undefined ? k - 1 : k + 1;
+      if (k >= 0 && j >= 0 && j < cs.length) [cs[k], cs[j]] = [cs[j], cs[k]];
+    } else if (ds.excluirC !== undefined) {
+      if (ds.confirma !== '1') {
+        b.dataset.confirma = '1';
+        b.textContent = 'Confirmar';
+        return;
+      }
+      removerCorredor(ds.excluirC);
+    } else {
+      return;
+    }
+    save(); renderCorrLista(); render();
+  });
+  function removerCorredor(nome) {
+    const cs = corredoresDo(corrTipo);
+    const k = cs.findIndex(x => x.nome === nome);
+    if (k >= 0) cs.splice(k, 1);
+    S.listas.filter(l => l.tipo === corrTipo).forEach(l => {
+      l.itens.forEach(i => { if (i.cat === nome) i.cat = 'Outros'; });
+    });
+    S.custom.forEach(p => { if (p.tipo === corrTipo && p.cat === nome) p.cat = 'Outros'; });
+  }
+  $('corr-add').addEventListener('click', () => {
+    const nome = $('corr-nome').value.trim();
+    if (!nome) return;
+    const cs = corredoresDo(corrTipo);
+    if (cs.some(c => norm(c.nome) === norm(nome))) return;
+    const idx = cs.findIndex(c => c.nome === 'Outros');
+    cs.splice(idx >= 0 ? idx : cs.length, 0, { nome: nome, cor: corrCorNova, ativo: true });
+    corrCorNova = (corrCorNova + 1) % TONS.length;
+    $('corr-nome').value = '';
+    save(); renderCorrLista(); renderCorrCores(); render();
+  });
+
+  // ---------- Novo tipo, editor de item ----------
+  function abrirEditor(id) {
+    const l = listaAtual();
+    const it = l && l.itens.find(i => i.id === id);
+    if (!it) return;
+    edId = id;
+    edQtd = it.qtd;
+    $('ed-texto').value = it.texto;
+    $('ed-cat').innerHTML = optsCats(l.tipo, it.cat);
+    $('ed-pasta').innerHTML = optsPastas(l, it.pasta);
+    $('ed-pasta-campo').hidden = !(l.pastas || []).length;
+    $('ed-encarte').checked = !!it.encarte;
+    $('ed-obs').value = it.obs || '';
+    $('ed-qtd').textContent = String(edQtd);
+    $('ed-remover').dataset.confirma = '';
+    $('ed-remover').textContent = 'Remover';
+    abrirFolha('folha-item');
+  }
+  $('ed-menos').addEventListener('click', () => { edQtd = Math.max(1, edQtd - 1); $('ed-qtd').textContent = String(edQtd); });
+  $('ed-mais').addEventListener('click', () => { edQtd++; $('ed-qtd').textContent = String(edQtd); });
+  function moverItem(dir) {
+    const l = listaAtual();
+    const it = l && l.itens.find(i => i.id === edId);
+    if (!it) return;
+    const grupo = l.itens.filter(i => !i.feito && (i.pasta || null) === (it.pasta || null) && (l.modo === 'manual' || i.cat === it.cat));
+    const k = grupo.indexOf(it), j = k + dir;
+    if (k < 0 || j < 0 || j >= grupo.length) return;
+    const a = l.itens.indexOf(it), b = l.itens.indexOf(grupo[j]);
+    [l.itens[a], l.itens[b]] = [l.itens[b], l.itens[a]];
+    save(); render();
+  }
+  $('ed-subir').addEventListener('click', () => moverItem(-1));
+  $('ed-descer').addEventListener('click', () => moverItem(1));
+  $('ed-salvar').addEventListener('click', () => {
+    const l = listaAtual();
+    const it = l && l.itens.find(i => i.id === edId);
+    if (!it) return;
+    const t = $('ed-texto').value.trim();
+    if (t) it.texto = t;
+    it.cat = $('ed-cat').value;
+    if ($('ed-pasta').value) it.pasta = $('ed-pasta').value; else delete it.pasta;
+    it.encarte = $('ed-encarte').checked;
+    it.obs = $('ed-obs').value.trim();
+    it.qtd = edQtd;
+    save(); fecharTudo(); render();
+  });
+  $('ed-remover').addEventListener('click', e => {
+    const b = e.currentTarget;
+    if (b.dataset.confirma !== '1') {
+      b.dataset.confirma = '1';
+      b.textContent = 'Toque de novo para remover';
+      return;
+    }
+    const l = listaAtual();
+    if (l) {
+      const pos = l.itens.findIndex(i => i.id === edId);
+      if (pos >= 0) {
+        const [removido] = l.itens.splice(pos, 1);
+        save(); fecharTudo(); render();
+        avisarDesfazer('“' + removido.texto + '” removido.',
+          () => { l.itens.splice(Math.min(pos, l.itens.length), 0, removido); save(); render(); });
+        return;
+      }
+    }
+    save(); fecharTudo(); render();
+  });
+
+  // ---------- Ícone da lista ----------
+  $('btn-icone-lista').addEventListener('click', () => { if (listaId) abrirIcone(listaId); });
+  function abrirIcone(id) {
+    const l = S.listas.find(x => x.id === id);
+    if (!l) return;
+    icAlvo = id;
+    const c = l.icone || {};
+    icRasc = { id: c.id || null, fundo: typeof c.fundo === 'number' ? c.fundo : null, cor: c.cor || null };
+    renderIcone();
+    abrirFolha('folha-icone');
+  }
+  function renderIcone() {
+    const l = S.listas.find(x => x.id === icAlvo);
+    if (!l) return;
+    const fam = familiaDo(l.tipo);
+    const opcoes = (ICONES_LISTA[fam] || []).concat(ICONES_LISTA.neutro);
+    const sel = icRasc.id || ICONE_PADRAO[fam];
+    $('ic-desenho').innerHTML = opcoes.map(([id, rot, inner]) =>
+      `<button type="button" class="ic-op" data-icone-id="${id}" aria-label="${esc(rot)}" aria-pressed="${id === sel}">${svgIc(inner)}</button>`).join('');
+    $('ic-fundo').innerHTML = `<button type="button" class="auto" data-ic-fundo="auto" aria-label="Cor de destaque do app" aria-pressed="${icRasc.fundo === null}"></button>` +
+      TONS.map((c, i) => `<button type="button" data-ic-fundo="${i}" aria-label="Fundo ${c[0]}" aria-pressed="${icRasc.fundo === i}" style="--c:${c[1]}"></button>`).join('');
+    document.querySelectorAll('#ic-cor [data-ic-cor]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.icCor === (icRasc.cor || 'auto'))));
+    const ic = iconeDo(l, icRasc);
+    $('ic-previa').innerHTML = `<span class="ico-tipo grande" style="${ic.estilo}">${svgIc(ic.inner)}</span>` +
+      `<div class="previa-txt"><strong>${esc(l.nome)}</strong><span class="ajuda">${esc(ic.rotulo)} · ${esc(tipoNome(l.tipo))}</span></div>`;
+  }
+  $('folha-icone').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.iconeId !== undefined) icRasc.id = b.dataset.iconeId;
+    else if (b.dataset.icFundo !== undefined) icRasc.fundo = b.dataset.icFundo === 'auto' ? null : Number(b.dataset.icFundo);
+    else if (b.dataset.icCor !== undefined) icRasc.cor = b.dataset.icCor === 'auto' ? null : b.dataset.icCor;
+    else return;
+    renderIcone();
+  });
+  $('ic-salvar').addEventListener('click', () => {
+    const l = S.listas.find(x => x.id === icAlvo);
+    if (!l) return;
+    const cfg = {};
+    if (icRasc.id) cfg.id = icRasc.id;
+    if (icRasc.fundo !== null) cfg.fundo = icRasc.fundo;
+    if (icRasc.cor) cfg.cor = icRasc.cor;
+    l.icone = cfg;
+    save(); fecharTudo(); render();
+  });
+  $('ic-padrao').addEventListener('click', () => {
+    const l = S.listas.find(x => x.id === icAlvo);
+    if (l) l.icone = {};
+    save(); fecharTudo(); render();
+  });
+
+  // ---------- Pastas dentro da lista (ex.: uma loja por pasta) ----------
+  function optsPastas(l, sel) {
+    return '<option value="">Sem pasta</option>' + (l.pastas || []).map(p =>
+      `<option value="${p.id}"${p.id === sel ? ' selected' : ''}>${esc(p.nome)}</option>`).join('');
+  }
+  $('pastas').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.pastaNova !== undefined) return abrirPasta(null);
+    if (b.dataset.pastaEditar !== undefined) return abrirPasta(b.dataset.pastaEditar);
+    if (b.dataset.pasta !== undefined) { pastaAtual = b.dataset.pasta; render(); }
+  });
+  function abrirPasta(id) {
+    const l = listaAtual();
+    if (!l) return;
+    pastaEdId = id;
+    const p = id ? (l.pastas || []).find(x => x.id === id) : null;
+    $('t-pasta').textContent = p ? 'Editar pasta' : 'Nova pasta';
+    $('pasta-nome').value = p ? p.nome : '';
+    $('pasta-excluir').hidden = !p;
+    $('pasta-excluir').dataset.confirma = '';
+    $('pasta-excluir').textContent = 'Excluir pasta';
+    abrirFolha('folha-pasta');
+  }
+  $('pasta-sug').addEventListener('click', e => {
+    const b = e.target.closest('[data-sug]');
+    if (b) $('pasta-nome').value = b.dataset.sug;
+  });
+  $('pasta-salvar').addEventListener('click', () => {
+    const l = listaAtual();
+    const nome = $('pasta-nome').value.trim();
+    if (!l || !nome) return;
+    if (l.pastas.some(p => p.id !== pastaEdId && norm(p.nome) === norm(nome))) return;
+    if (pastaEdId) {
+      const p = l.pastas.find(x => x.id === pastaEdId);
+      if (p) p.nome = nome;
+    } else {
+      const p = { id: uid(), nome: nome };
+      l.pastas.push(p);
+      pastaAtual = p.id;
+    }
+    save(); fecharTudo(); render();
+  });
+  $('pasta-excluir').addEventListener('click', e => {
+    const b = e.currentTarget;
+    if (b.dataset.confirma !== '1') {
+      b.dataset.confirma = '1';
+      b.textContent = 'Toque de novo para excluir';
+      return;
+    }
+    const l = listaAtual();
+    if (!l || !pastaEdId) return;
+    l.pastas = l.pastas.filter(p => p.id !== pastaEdId);
+    l.itens.forEach(i => { if (i.pasta === pastaEdId) delete i.pasta; });
+    if (pastaAtual === pastaEdId) pastaAtual = 'todas';
+    pastaEdId = null;
+    save(); fecharTudo(); render();
+  });
+
+  // ---------- Copiar a lista como texto (para mandar no WhatsApp) ----------
+  function textoDaLista(l) {
+    const ordem = corredoresDo(l.tipo).map(c => c.nome);
+    let pend = l.itens.filter(i => !i.feito);
+    if (l.modo === 'corredor') pend = pend.slice().sort((a, b) => ordem.indexOf(a.cat) - ordem.indexOf(b.cat));
+    const linha = i => `- ${i.qtd > 1 ? i.qtd + ' ' : ''}${i.texto}${i.encarte ? ' (encarte)' : ''}${i.obs ? ' – ' + i.obs : ''}`;
+    const pastas = l.pastas || [];
+    const grupos = pastas.map(p => ({ nome: p.nome, itens: pend.filter(i => i.pasta === p.id) }));
+    grupos.push({ nome: pastas.length ? 'Sem pasta' : null, itens: pend.filter(i => !pastas.some(p => p.id === i.pasta)) });
+    const cab = `${l.nome} (${pend.length} ${pend.length === 1 ? 'item' : 'itens'})`;
+    const corpo = grupos.filter(g => g.itens.length)
+      .map(g => (g.nome ? `*${g.nome}*\n` : '') + g.itens.map(linha).join('\n')).join('\n\n');
+    return corpo ? cab + '\n\n' + corpo : cab;
+  }
+  // Compartilhar: usa a folha de compartilhamento do celular (WhatsApp etc.) quando existe;
+  // se não houver, mostra o texto para copiar.
+  function abrirCopia(l) {
+    const t = textoDaLista(l);
+    fecharTudo();
+    if (navigator.share) {
+      try {
+        navigator.share({ title: l.nome, text: t }).catch(err => { if (err && err.name !== 'AbortError') mostrarCopia(t); });
+        return;
+      } catch (e) { /* sem compartilhamento nativo: mostra o texto */ }
+    }
+    mostrarCopia(t);
+  }
+  function mostrarCopia(t) {
+    $('copia-texto').value = t;
+    $('copia-botao').textContent = 'Copiar texto';
+    abrirFolha('folha-copia');
+  }
+  $('copia-botao').addEventListener('click', () => {
+    const area = $('copia-texto');
+    const manual = () => {
+      area.focus();
+      area.select();
+      $('copia-botao').textContent = 'Toque e segure o texto para copiar';
+    };
+    try {
+      navigator.clipboard.writeText(area.value).then(
+        () => { $('copia-botao').textContent = 'Copiado! Cole no WhatsApp'; },
+        manual);
+    } catch (e) { manual(); }
+  });
+
+  // ---------- Ajustes ----------
+  function aplicarAjustes() {
+    const a = S.ajustes, r = document.documentElement, f = FONTES[a.fonte] || FONTES.padrao;
+    if (a.tema === 'claro') r.setAttribute('data-theme', 'light');
+    else if (a.tema === 'escuro') r.setAttribute('data-theme', 'dark');
+    else r.removeAttribute('data-theme');
+    r.style.setProperty('--accent', DESTAQUES[a.destaque][1]);
+    r.style.setProperty('--base', a.tamanho + 'px');
+    r.style.setProperty('--scale', f.scale);
+    r.style.setProperty('--font-display', f.disp + ', system-ui, sans-serif');
+    r.style.setProperty('--font-body', f.corpo + ', system-ui, sans-serif');
+  }
+  function marcarAjustes() {
+    const a = S.ajustes;
+    document.querySelectorAll('[data-tema]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tema === a.tema)));
+    document.querySelectorAll('[data-destaque]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.destaque) === a.destaque)));
+    document.querySelectorAll('[data-fonte]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fonte === a.fonte)));
+    $('tamanho').value = String(a.tamanho);
+  }
+  function renderAjustes() {
+    $('cores-destaque').innerHTML = DESTAQUES.map((d, i) =>
+      `<button type="button" data-destaque="${i}" aria-label="Destaque ${d[0]}" aria-pressed="false" style="--c:${d[1]}"></button>`).join('');
+    $('fontes').innerHTML = Object.keys(FONTES).map(k => {
+      const f = FONTES[k];
+      return `<button type="button" data-fonte="${k}" aria-pressed="false"><span class="f-nome" style="font-family:${f.disp}">${f.nome}</span>` +
+        `<small style="font-family:${f.corpo}">Tomate, queijo e pão de forma</small></button>`;
+    }).join('');
+    marcarAjustes();
+  }
+  $('folha-ajustes').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const a = S.ajustes;
+    if (b.dataset.tema) a.tema = b.dataset.tema;
+    else if (b.dataset.destaque !== undefined) a.destaque = Number(b.dataset.destaque);
+    else if (b.dataset.fonte) a.fonte = b.dataset.fonte;
+    else return;
+    aplicarAjustes(); marcarAjustes(); save();
+  });
+  $('tamanho').addEventListener('input', e => {
+    S.ajustes.tamanho = Number(e.target.value);
+    aplicarAjustes(); save();
+  });
+
+  // ---------- Folhas ----------
+  function abrirFolha(id) {
+    fecharTudo();
+    $('veu').hidden = false;
+    $(id).hidden = false;
+    $(id).scrollTop = 0;
+    $(id).focus();
+  }
+  function fecharTudo() {
+    $('veu').hidden = true;
+    document.querySelectorAll('.folha').forEach(f => { f.hidden = true; });
+  }
+  $('veu').addEventListener('click', fecharTudo);
+  document.querySelectorAll('[data-fechar]').forEach(b => b.addEventListener('click', fecharTudo));
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('veu').hidden) fecharTudo();
+    else $('sugestoes').hidden = true;
+  });
+
+  // ---------- Início ----------
+  aplicarAjustes();
+  mostrarTela();
+  render();
+})();
+
+</script>
