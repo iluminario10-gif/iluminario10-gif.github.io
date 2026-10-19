@@ -99,8 +99,13 @@ window.MEUS_APPS_VERSOES = {
   notas: {
     nome: 'Notas em Dia',
     icone: 'notas-icon-192.png',
-    atual: '1.0',
+    atual: '1.1',
     historico: [
+      { versao: '1.1', itens: [
+        'Importar planilha (CSV) em Ajustes: pacientes e notas de uma vez. Quem já está cadastrado recebe só as notas novas.',
+        'Pacientes sem plano ou tipo de atendimento ficam em “Cadastro incompleto”, sem atrapalhar os outros.',
+        'Notas canceladas aparecem no histórico, mas não contam para o prazo.',
+      ] },
       { versao: '1.0', itens: [
         'Quem pode receber nota agora e quem aguarda, com a data de cada um e os dias que faltam.',
         'Cadastro com nome, CPF, valor, plano e tipo de atendimento. Busca por nome ou CPF, e o CPF pode ser copiado.',

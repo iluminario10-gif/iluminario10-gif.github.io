@@ -153,7 +153,7 @@ button.item{display:flex;flex-direction:column;align-items:stretch;gap:3px;width
    A chave sai da senha do usuário (PBKDF2-SHA256).
    ========================================================== */
 
-const VERSAO = '1.0';
+const VERSAO = '1.1';
 const CHAVE_COFRE = 'notas-em-dia.cofre';
 const ITER = 600000;
 const MIN_SENHA = 6;
@@ -242,32 +242,55 @@ function parseValor(s){
 }
 function numeroBR(n){ return Number(n).toFixed(2).replace('.', ','); }
 function reais(n){ return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function valorLegivel(n){ return n == null || isNaN(n) ? '—' : reais(n); }
+function tipoLegivel(t){ return TIPOS[t] || '—'; }
 function csvCampo(v){
   const s = String(v == null ? '' : v);
   return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 
 /* ---------- modelo ---------- */
+// Conta para a próxima nota: tem dia e não foi cancelada. Notas canceladas ficam no histórico, mas não contam.
+function contaNota(e){ return !!e.data && e.situacao !== 'cancelada'; }
 function ultimaNota(p){
-  return p.emissoes.reduce((m, e) => (e.data > m ? e.data : m), '');
+  return p.emissoes.filter(contaNota).reduce((m, e) => (e.data > m ? e.data : m), '');
+}
+function prazoCompleto(p){ return Number.isInteger(p.intervalo) && p.intervalo >= 1; }
+function faltando(p){
+  const f = [];
+  if (!p.plano) f.push('plano de saúde');
+  if (!prazoCompleto(p)) f.push('intervalo entre notas');
+  if (!TIPOS[p.tipo]) f.push('tipo de atendimento');
+  if (p.valor == null || isNaN(p.valor)) f.push('valor da nota');
+  return f;
 }
 function situacao(p, hoje){
   hoje = hoje || hojeISO();
+  if (!prazoCompleto(p)) {
+    return { completo: false, pode: false, proxima: null, falta: null,
+      texto: p.plano ? 'Falta definir o intervalo entre notas' : 'Falta definir o plano de saúde' };
+  }
   const ult = ultimaNota(p);
-  if (!ult) return { pode: true, proxima: null, falta: 0, texto: 'Primeira nota: pode emitir' };
-  const proxima = addDias(ult, Number(p.intervalo));
+  if (!ult) return { completo: true, pode: true, proxima: null, falta: 0, texto: 'Primeira nota: pode emitir' };
+  const proxima = addDias(ult, p.intervalo);
   const falta = diasEntre(hoje, proxima);
   if (falta <= 0) {
-    return { pode: true, proxima, falta, texto: falta === 0 ? 'Pode emitir hoje' : 'Pode emitir desde ' + dataBR(proxima) };
+    return { completo: true, pode: true, proxima, falta, texto: falta === 0 ? 'Pode emitir hoje' : 'Pode emitir desde ' + dataBR(proxima) };
   }
-  return { pode: false, proxima, falta, texto: 'Aguardar até ' + dataBR(proxima) + ' · faltam ' + falta + (falta === 1 ? ' dia' : ' dias') };
+  return { completo: true, pode: false, proxima, falta, texto: 'Aguardar até ' + dataBR(proxima) + ' · faltam ' + falta + (falta === 1 ? ' dia' : ' dias') };
 }
 function achar(id){ return estado.pacientes.find(p => p.id === id); }
 function dadosValidos(d){ return !!d && Array.isArray(d.pacientes) && Array.isArray(d.planos); }
 function normalizarEstado(){
   estado.planos = estado.planos || [];
   estado.pacientes = estado.pacientes || [];
-  estado.pacientes.forEach(p => { p.emissoes = p.emissoes || []; p.intervalo = Number(p.intervalo); p.valor = Number(p.valor); });
+  estado.pacientes.forEach(p => {
+    p.emissoes = p.emissoes || [];
+    p.plano = p.plano || '';
+    p.tipo = TIPOS[p.tipo] ? p.tipo : '';
+    p.intervalo = p.intervalo === '' || p.intervalo == null ? null : Number(p.intervalo);
+    p.valor = p.valor === '' || p.valor == null ? null : Number(p.valor);
+  });
 }
 
 /* ---------- criptografia ---------- */
@@ -470,21 +493,25 @@ function vEmitir(){
   }
   const hoje = hojeISO();
   const itens = estado.pacientes.map(p => ({ p, s: situacao(p, hoje) }));
-  const podem = itens.filter(x => x.s.pode).sort((a, b) => (a.s.proxima || '').localeCompare(b.s.proxima || '') || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
-  const aguardam = itens.filter(x => !x.s.pode).sort((a, b) => a.s.proxima.localeCompare(b.s.proxima) || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
+  const porNome = (a, b) => a.p.nome.localeCompare(b.p.nome, 'pt-BR');
+  const completos = itens.filter(x => x.s.completo);
+  const incompletos = itens.filter(x => !x.s.completo).sort(porNome);
+  const podem = completos.filter(x => x.s.pode).sort((a, b) => (a.s.proxima || '').localeCompare(b.s.proxima || '') || porNome(a, b));
+  const aguardam = completos.filter(x => !x.s.pode).sort((a, b) => a.s.proxima.localeCompare(b.s.proxima) || porNome(a, b));
   return '<p class="resumo">Hoje, ' + dataBR(hoje) + ' · <strong>' + podem.length + '</strong> podem emitir · <strong>' + aguardam.length + '</strong> aguardando</p>' +
     '<h2 class="secao">Pode emitir agora</h2>' +
     (podem.length ? podem.map(cardEmitir).join('') : '<p class="vazio-txt">Ninguém pode emitir hoje.</p>') +
     '<h2 class="secao">Aguardando prazo</h2>' +
-    (aguardam.length ? aguardam.map(cardEmitir).join('') : '<p class="vazio-txt">Ninguém aguardando.</p>');
+    (aguardam.length ? aguardam.map(cardEmitir).join('') : '<p class="vazio-txt">Ninguém aguardando.</p>') +
+    (incompletos.length ? '<h2 class="secao">Cadastro incompleto</h2><p class="sub" style="margin:0 0 10px">Estes pacientes ainda não têm plano, intervalo ou tipo de atendimento. Toque no nome para completar.</p>' + incompletos.map(cardEmitir).join('') : '');
 }
 function cardEmitir(x){
   const p = x.p, s = x.s;
   const ult = ultimaNota(p);
   return '<article class="card">' +
     '<div class="linha"><h3><button type="button" class="link-nome" data-act="abrir" data-id="' + p.id + '">' + esc(p.nome) + '</button></h3>' +
-    '<span class="chip ' + (s.pode ? 'pode' : 'aguarda') + '">' + (s.pode ? 'Pode emitir' : 'Aguardar') + '</span></div>' +
-    '<p class="sub">' + esc(p.plano) + ' · ' + TIPOS[p.tipo] + ' · ' + reais(p.valor) + '</p>' +
+    '<span class="chip ' + (!s.completo ? 'aguarda' : s.pode ? 'pode' : 'aguarda') + '">' + (!s.completo ? 'Incompleto' : s.pode ? 'Pode emitir' : 'Aguardar') + '</span></div>' +
+    '<p class="sub">' + esc(p.plano || 'Sem plano') + ' · ' + tipoLegivel(p.tipo) + ' · ' + valorLegivel(p.valor) + '</p>' +
     '<p class="status ' + (s.pode ? 'ok' : 'warn') + '">' + esc(s.texto) + '</p>' +
     '<p class="sub">Última nota: ' + (ult ? dataBR(ult) : 'nenhuma') + '</p>' +
     '<button type="button" class="' + (s.pode ? 'btn-pri' : 'btn-sec') + ' bloco" data-act="emitir" data-id="' + p.id + '">Registrar emissão</button>' +
@@ -507,7 +534,7 @@ function listaPacientes(){
     const s = situacao(p);
     return '<button type="button" class="card item" data-act="abrir" data-id="' + p.id + '">' +
       '<span class="nome">' + esc(p.nome) + '</span>' +
-      '<span class="sub">' + esc(p.plano) + ' · ' + TIPOS[p.tipo] + ' · CPF ' + formatCpf(p.cpf) + '</span>' +
+      '<span class="sub">' + esc(p.plano || 'Sem plano') + ' · ' + tipoLegivel(p.tipo) + ' · CPF ' + formatCpf(p.cpf) + '</span>' +
       '<span class="status ' + (s.pode ? 'ok' : 'warn') + '">' + esc(s.texto) + '</span>' +
     '</button>';
   }).join('');
@@ -528,12 +555,13 @@ function vPaciente(id){
     '<article class="card" style="margin-top:8px">' +
       '<h2 class="nome-grande">' + esc(p.nome) + '</h2>' +
       '<span class="chip ' + (s.pode ? 'pode' : 'aguarda') + '">' + esc(s.texto) + '</span>' +
+      (faltando(p).length ? '<p class="aviso" style="margin:10px 0 0">Falta preencher: ' + esc(faltando(p).join(', ')) + '. Toque em Editar.</p>' : '') +
       '<dl class="ficha">' +
         '<dt>CPF</dt><dd>' + formatCpf(p.cpf) + '</dd>' +
-        '<dt>Plano</dt><dd>' + esc(p.plano) + '</dd>' +
-        '<dt>Atendimento</dt><dd>' + TIPOS[p.tipo] + '</dd>' +
-        '<dt>Valor da nota</dt><dd>' + reais(p.valor) + '</dd>' +
-        '<dt>Intervalo entre notas</dt><dd>' + p.intervalo + ' dias</dd>' +
+        '<dt>Plano</dt><dd>' + esc(p.plano || '—') + '</dd>' +
+        '<dt>Atendimento</dt><dd>' + tipoLegivel(p.tipo) + '</dd>' +
+        '<dt>Valor da nota</dt><dd>' + valorLegivel(p.valor) + '</dd>' +
+        '<dt>Intervalo entre notas</dt><dd>' + (prazoCompleto(p) ? p.intervalo + ' dias' : '—') + '</dd>' +
         '<dt>Última nota</dt><dd>' + (ult ? dataBR(ult) : 'Nunca emitiu') + '</dd>' +
         '<dt>Próxima nota a partir de</dt><dd>' + (s.proxima ? dataBR(s.proxima) : 'Agora') + '</dd>' +
       '</dl>' +
@@ -547,8 +575,11 @@ function vPaciente(id){
     '<h2 class="secao">Histórico de notas</h2>' +
     (hist.length
       ? '<ul class="hist">' + hist.map(e =>
-          '<li><span><strong>' + dataBR(e.data) + '</strong> · ' + reais(e.valor) +
-          (e.origem === 'cadastro' ? ' <span class="sub">(informada no cadastro)</span>' : '') + '</span>' +
+          '<li><span><strong>' + dataBR(e.data) + '</strong> · ' + valorLegivel(e.valor) +
+          (e.origem === 'cadastro' ? ' <span class="sub">(informada no cadastro)</span>' : '') +
+          (e.situacao === 'cancelada' ? ' <span class="sub">(cancelada: não conta para o prazo)</span>' : '') +
+          (e.situacao === 'substituicao' ? ' <span class="sub">(em substituição)</span>' : '') +
+          (e.obs ? '<br><span class="sub">' + esc(e.obs) + '</span>' : '') + '</span>' +
           '<button type="button" class="btn-txt perigo" data-act="apagar-emissao" data-id="' + p.id + '" data-eid="' + e.id + '">Remover</button></li>').join('') + '</ul>'
       : '<p class="vazio-txt">Nenhuma nota registrada ainda.</p>') +
     '<button type="button" class="btn-perigo bloco" data-act="excluir" data-id="' + p.id + '">Excluir paciente</button>';
@@ -581,6 +612,7 @@ function vAjustes(){
     '<div class="card acoes-lista">' +
       '<button type="button" class="btn-pri bloco" data-act="backup">Salvar backup criptografado</button>' +
       '<label class="btn-sec bloco" style="position:relative;overflow:hidden">Restaurar backup<input type="file" id="arquivo-backup" accept=".json,application/json" class="sr-input"></label>' +
+      '<label class="btn-sec bloco" style="position:relative;overflow:hidden">Importar planilha (CSV)<input type="file" id="arquivo-planilha" accept=".csv,text/csv" class="sr-input"></label>' +
       '<button type="button" class="btn-sec bloco" data-act="csv">Exportar emissões do mês (planilha)</button>' +
       '<button type="button" class="btn-perigo bloco" data-act="apagar">Apagar todos os dados deste aparelho</button>' +
     '</div>' +
@@ -590,7 +622,7 @@ function vAjustes(){
 /* ---------- cadastro de paciente ---------- */
 function formPaciente(p){
   const v = p || { nome: '', cpf: '', valor: '', plano: '', intervalo: '', tipo: 'consulta' };
-  const valorTxt = p ? numeroBR(p.valor) : '';
+  const valorTxt = p && p.valor != null && !isNaN(p.valor) ? numeroBR(p.valor) : '';
   const opcoesPlano = estado.planos.map(pl => '<option value="' + esc(pl.nome) + '"></option>').join('');
   return '<form data-form="paciente" data-id="' + (p ? p.id : '') + '" class="form" novalidate>' +
     '<label>Nome do paciente <span class="ajuda">Dois nomes bastam, ex.: Maria Silva</span>' +
@@ -655,10 +687,10 @@ function abrirEmissao(p){
   const s = situacao(p, hoje);
   abrirFolha('Registrar emissão',
     '<form data-form="emissao" data-id="' + p.id + '" class="form" novalidate>' +
-      '<p><strong>' + esc(p.nome) + '</strong><br><span class="sub">' + esc(p.plano) + ' · ' + TIPOS[p.tipo] + '</span></p>' +
+      '<p><strong>' + esc(p.nome) + '</strong><br><span class="sub">' + esc(p.plano || 'Sem plano') + ' · ' + tipoLegivel(p.tipo) + '</span></p>' +
       '<p class="status ' + (s.pode ? 'ok' : 'warn') + '">' + esc(s.texto) + '</p>' +
       '<label>Data da emissão<input type="date" name="data" value="' + hoje + '" max="' + hoje + '"></label>' +
-      '<label>Valor (R$)<input name="valor" inputmode="decimal" value="' + esc(numeroBR(p.valor)) + '"></label>' +
+      '<label>Valor (R$)<input name="valor" inputmode="decimal" value="' + esc(p.valor == null || isNaN(p.valor) ? '' : numeroBR(p.valor)) + '"></label>' +
       '<p class="erro" hidden></p>' +
       '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button><button type="submit" class="btn-pri">Salvar emissão</button></div>' +
     '</form>');
@@ -674,7 +706,7 @@ function salvarEmissao(f){
   else if (isNaN(valor)) msg = 'Valor inválido.';
   if (msg) { mostrarErro(erro, msg); return; }
   const s = situacao(p);
-  if (!s.pode && !window.confirm('Este paciente ainda está no prazo (' + s.texto + '). Registrar a emissão mesmo assim?')) return;
+  if (s.completo && !s.pode && !window.confirm('Este paciente ainda está no prazo (' + s.texto + '). Registrar a emissão mesmo assim?')) return;
   p.emissoes.push({ id: novoId(), data, valor, origem: 'registro' });
   salvar();
   fecharFolha();
@@ -845,14 +877,232 @@ function exportarCsv(f){
   const mes = f.elements.mes.value;
   if (!/^\d{4}-\d{2}$/.test(mes)) { toast('Escolha um mês.'); return; }
   const registros = [];
-  estado.pacientes.forEach(p => p.emissoes.forEach(e => { if (e.data.startsWith(mes)) registros.push({ p, e }); }));
+  estado.pacientes.forEach(p => p.emissoes.forEach(e => { if (contaNota(e) && e.data.startsWith(mes)) registros.push({ p, e }); }));
   registros.sort((a, b) => a.e.data.localeCompare(b.e.data) || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
   const linhas = [['Data', 'Paciente', 'CPF', 'Plano', 'Atendimento', 'Valor (R$)']];
-  registros.forEach(({ p, e }) => linhas.push([dataBR(e.data), p.nome, formatCpf(p.cpf), p.plano, TIPOS[p.tipo], numeroBR(e.valor)]));
+  registros.forEach(({ p, e }) => linhas.push([dataBR(e.data), p.nome, formatCpf(p.cpf), p.plano || '', TIPOS[p.tipo] || '', e.valor == null || isNaN(e.valor) ? '' : numeroBR(e.valor)]));
   const texto = '﻿' + linhas.map(l => l.map(csvCampo).join(';')).join('\r\n') + '\r\n';
   baixar('emissoes-' + mes + '.csv', texto, 'text/csv;charset=utf-8');
   fecharFolha();
   toast('Planilha gerada: ' + registros.length + ' nota(s) no mês.');
+}
+
+/* ---------- importar planilha (CSV) ---------- */
+// Uma linha por nota. Colunas (ordem livre, com ou sem acento): nome; cpf; plano; tipo; intervalo; valor; data; valor_nota; situacao; observacao.
+// O paciente é reconhecido pelo CPF. Pacientes já cadastrados recebem só as notas que ainda não existem.
+const COLUNAS_PLANILHA = {
+  nome: ['nome', 'paciente'],
+  cpf: ['cpf'],
+  plano: ['plano', 'plano de saude'],
+  tipo: ['tipo', 'tipo de atendimento', 'atendimento'],
+  intervalo: ['intervalo', 'intervalo dias', 'intervalo entre notas'],
+  valor: ['valor', 'valor da nota'],
+  data: ['data', 'data da nota', 'data da emissao'],
+  valor_nota: ['valor nota', 'valor da emissao'],
+  situacao: ['situacao'],
+  observacao: ['observacao', 'observacoes', 'obs']
+};
+let planilhaImport = null;
+
+function lerCsv(texto){
+  texto = String(texto).replace(/^﻿/, '');
+  const primeira = texto.split(/\r?\n/)[0] || '';
+  const sep = primeira.split(';').length >= primeira.split(',').length ? ';' : ',';
+  const linhas = [];
+  let campo = '', linha = [], aspas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (aspas) {
+      if (c === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; }
+      else campo += c;
+    } else if (c === '"') aspas = true;
+    else if (c === sep) { linha.push(campo); campo = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && texto[i + 1] === '\n') i++;
+      linha.push(campo); linhas.push(linha); linha = []; campo = '';
+    } else campo += c;
+  }
+  if (campo !== '' || linha.length) { linha.push(campo); linhas.push(linha); }
+  return linhas.filter(l => l.some(x => x.trim() !== ''));
+}
+function nomeColuna(h){ return norm(h).replace(/[_-]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function mapaColunas(cab){
+  const m = {};
+  cab.forEach((h, i) => {
+    const n = nomeColuna(h);
+    Object.keys(COLUNAS_PLANILHA).forEach(k => { if (m[k] === undefined && COLUNAS_PLANILHA[k].includes(n)) m[k] = i; });
+  });
+  return m;
+}
+// Devolve a data em ISO, '' se vazia ou undefined se inválida (ou no futuro).
+function dataDaPlanilha(t){
+  const txt = String(t || '').trim();
+  let iso = null, m = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) iso = m[3] + '-' + m[2] + '-' + m[1];
+  else if (/^\d{4}-\d{2}-\d{2}$/.test(txt)) iso = txt;
+  if (!iso || toISO(parseISO(iso)) !== iso || iso > hojeISO()) return undefined;
+  return iso;
+}
+function tipoDaPlanilha(t){
+  const n = norm(t).trim();
+  if (!n) return '';
+  if (n.includes('acupuntura')) return 'acupuntura';
+  if (n.includes('consulta')) return 'consulta';
+  return undefined;
+}
+function situacaoDaPlanilha(t){
+  const n = norm(t);
+  if (n.includes('cancel')) return 'cancelada';
+  if (n.includes('substitu')) return 'substituicao';
+  return 'emitida';
+}
+function chaveNota(e){
+  const v = e.valor == null || isNaN(e.valor) ? '' : Number(e.valor).toFixed(2);
+  return [e.data || '', v, e.situacao || 'emitida', e.obs || ''].join('|');
+}
+function planoDaPlanilha(nome){
+  const n = norm(nome).trim();
+  if (!n) return null;
+  return estado.planos.find(pl => norm(pl.nome).trim() === n) || null;
+}
+function analisarPlanilha(texto){
+  const linhas = lerCsv(texto);
+  if (linhas.length < 2) return { erro: 'A planilha está vazia ou não tem linhas de dados.' };
+  const cab = mapaColunas(linhas[0]);
+  if (cab.nome === undefined || cab.cpf === undefined) {
+    return { erro: 'Não encontrei as colunas “nome” e “cpf” na primeira linha da planilha.' };
+  }
+  const get = (l, k) => (cab[k] === undefined ? '' : String(l[cab[k]] == null ? '' : l[cab[k]]).trim());
+  const grupos = new Map();
+  const avisos = [];
+  let lidas = 0;
+  linhas.slice(1).forEach((l, i) => {
+    const n = i + 2;
+    const nome = get(l, 'nome').replace(/\s+/g, ' ');
+    const cpf = get(l, 'cpf').replace(/\D/g, '');
+    if (!nome && !cpf) return;
+    lidas++;
+    if (!nomeValido(nome)) { avisos.push('Linha ' + n + ': o nome precisa ter pelo menos dois nomes (“' + nome + '”). Linha ignorada.'); return; }
+    if (!cpfValido(cpf)) { avisos.push('Linha ' + n + ': CPF inválido para ' + nome + '. Linha ignorada.'); return; }
+    const tipo = tipoDaPlanilha(get(l, 'tipo'));
+    if (tipo === undefined) avisos.push('Linha ' + n + ': tipo de atendimento não reconhecido (“' + get(l, 'tipo') + '”). Ficou em branco.');
+    let g = grupos.get(cpf);
+    if (!g) { g = { nome, cpf, plano: '', tipo: '', intervalo: null, valor: null, notas: [] }; grupos.set(cpf, g); }
+    if (!g.plano && get(l, 'plano')) g.plano = get(l, 'plano');
+    if (!g.tipo && tipo) g.tipo = tipo;
+    const iv = Number(get(l, 'intervalo'));
+    if (g.intervalo == null && get(l, 'intervalo') && Number.isInteger(iv) && iv >= 1) g.intervalo = iv;
+    const valorCad = parseValor(get(l, 'valor'));
+    if (g.valor == null && !isNaN(valorCad)) g.valor = valorCad;
+    const data = get(l, 'data');
+    const valorTxtNota = get(l, 'valor_nota');
+    if (!data && !valorTxtNota) return;
+    const iso = data ? dataDaPlanilha(data) : '';
+    if (iso === undefined) { avisos.push('Linha ' + n + ': data inválida (“' + data + '”) para ' + nome + '. Use dd/mm/aaaa. Nota ignorada.'); return; }
+    const valorNota = valorTxtNota ? parseValor(valorTxtNota) : NaN;
+    if (valorTxtNota && isNaN(valorNota)) avisos.push('Linha ' + n + ': valor da nota inválido (“' + valorTxtNota + '”) para ' + nome + '. Nota salva sem valor.');
+    g.notas.push({ data: iso, valor: isNaN(valorNota) ? null : valorNota, situacao: situacaoDaPlanilha(get(l, 'situacao')), obs: get(l, 'observacao') });
+  });
+  const lista = [...grupos.values()].map(g => {
+    const pl = planoDaPlanilha(g.plano);
+    if (g.intervalo == null && pl) g.intervalo = pl.intervalo;
+    return g;
+  });
+  return { erro: null, linhas: lidas, grupos: lista, avisos };
+}
+// Para cada paciente, quais notas ainda não existem no aparelho.
+function planejarImportacao(r){
+  const res = { novos: 0, existentes: 0, notas: 0, incompletos: 0, canceladas: 0, semDia: 0, semValor: 0, avisos: r.avisos, grupos: [] };
+  r.grupos.forEach(g => {
+    const p = estado.pacientes.find(x => x.cpf === g.cpf) || null;
+    const contagem = {};
+    (p ? p.emissoes : []).forEach(e => { const k = chaveNota(e); contagem[k] = (contagem[k] || 0) + 1; });
+    const vistos = {};
+    const aAdicionar = [];
+    g.notas.forEach(n => {
+      const k = chaveNota(n);
+      vistos[k] = (vistos[k] || 0) + 1;
+      if (vistos[k] > (contagem[k] || 0)) aAdicionar.push(n);
+    });
+    res.grupos.push({ g, p, aAdicionar });
+    if (p) res.existentes++; else res.novos++;
+    res.notas += aAdicionar.length;
+    aAdicionar.forEach(n => {
+      if (n.situacao === 'cancelada') res.canceladas++;
+      if (/dia não visível/.test(n.obs)) res.semDia++;
+      if (n.valor == null) res.semValor++;
+    });
+    const plano = (p && p.plano) || g.plano;
+    const tipo = (p && TIPOS[p.tipo] ? p.tipo : '') || g.tipo;
+    const intervalo = p && prazoCompleto(p) ? p.intervalo : g.intervalo;
+    if (!plano || !tipo || !(intervalo >= 1)) res.incompletos++;
+  });
+  return res;
+}
+function lerArquivoPlanilha(file){
+  const r = new FileReader();
+  r.onload = () => {
+    const res = analisarPlanilha(String(r.result || ''));
+    planilhaImport = res.erro ? null : res;
+    abrirFolha('Importar planilha', res.erro ? mensagemPlanilha(res.erro) : formPrevia(res));
+  };
+  r.readAsText(file, 'UTF-8');
+}
+function mensagemPlanilha(texto){
+  return '<p>' + esc(texto) + '</p><div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Fechar</button></div>';
+}
+function formPrevia(r){
+  const p = planejarImportacao(r);
+  const avisos = [];
+  if (p.incompletos) avisos.push(p.incompletos + ' paciente(s) sem plano, intervalo ou tipo de atendimento: ficam em “Cadastro incompleto” até você completar.');
+  if (p.canceladas) avisos.push(p.canceladas + ' nota(s) cancelada(s): entram no histórico, mas não contam para o prazo.');
+  if (p.semDia) avisos.push(p.semDia + ' nota(s) sem dia exato: entram com o último dia do mês e aparecem marcadas no histórico.');
+  if (p.semValor) avisos.push(p.semValor + ' nota(s) sem valor.');
+  const lista = r.avisos.slice(0, 8).map(a => '<p style="margin:0 0 6px">' + esc(a) + '</p>').join('') +
+    (r.avisos.length > 8 ? '<p style="margin:0 0 6px">e mais ' + (r.avisos.length - 8) + '</p>' : '');
+  const nada = !p.novos && !p.notas;
+  return '<form data-form="planilha" class="form" novalidate>' +
+    '<p>Lidas <strong>' + r.linhas + '</strong> linha(s) para <strong>' + r.grupos.length + '</strong> paciente(s).</p>' +
+    '<p style="margin:0 0 6px"><strong>' + p.novos + '</strong> paciente(s) novo(s)</p>' +
+    '<p style="margin:0 0 6px"><strong>' + p.existentes + '</strong> já cadastrado(s): só as notas que ainda não existem serão acrescentadas</p>' +
+    '<p style="margin:0 0 6px"><strong>' + p.notas + '</strong> nota(s) para acrescentar</p>' +
+    (avisos.length ? '<p class="aviso">' + avisos.map(esc).join('<br>') + '</p>' : '') +
+    (r.avisos.length ? '<p class="sub" style="margin:12px 0 6px">Linhas que não entram:</p>' + lista : '') +
+    (nada ? '<p class="sub" style="margin-top:12px">Nada novo para importar: estes dados já estão no aparelho.</p>' : '') +
+    '<div class="acoes"><button type="button" class="btn-sec" data-act="fechar-folha">Cancelar</button>' +
+    (nada ? '' : '<button type="submit" class="btn-pri">Importar</button>') + '</div>' +
+  '</form>';
+}
+function aplicarPlanilha(){
+  const r = planilhaImport;
+  if (!r) { fecharFolha(); return; }
+  const previa = planejarImportacao(r);
+  let novos = 0, atualizados = 0, notas = 0;
+  previa.grupos.forEach(({ g, p, aAdicionar }) => {
+    let alvo = p;
+    if (!alvo) {
+      alvo = { id: novoId(), nome: g.nome, cpf: g.cpf, valor: g.valor, plano: g.plano, intervalo: g.intervalo, tipo: g.tipo, emissoes: [] };
+      estado.pacientes.push(alvo);
+      novos++;
+    } else {
+      // Completa só o que estiver em branco; o que já estava cadastrado não é trocado pela planilha.
+      if (!alvo.plano && g.plano) alvo.plano = g.plano;
+      if (!TIPOS[alvo.tipo] && g.tipo) alvo.tipo = g.tipo;
+      if (!prazoCompleto(alvo) && g.intervalo) alvo.intervalo = g.intervalo;
+      if ((alvo.valor == null || isNaN(alvo.valor)) && g.valor != null) alvo.valor = g.valor;
+      if (aAdicionar.length) atualizados++;
+    }
+    aAdicionar.forEach(n => {
+      alvo.emissoes.push({ id: novoId(), data: n.data, valor: n.valor, situacao: n.situacao, obs: n.obs, origem: 'planilha' });
+      notas++;
+    });
+  });
+  salvar();
+  planilhaImport = null;
+  fecharFolha();
+  tela = { nome: 'pacientes' };
+  render();
+  toast('Planilha importada: ' + novos + ' paciente(s) novo(s), ' + notas + ' nota(s) acrescentada(s).');
 }
 
 /* ---------- ações e formulários ---------- */
@@ -912,7 +1162,8 @@ function acao(nome, el){
     }
     case 'copiar-desc': {
       const p = achar(el.dataset.id);
-      if (p) copiar(DESCRICOES[p.tipo], 'Descrição copiada');
+      if (p && DESCRICOES[p.tipo]) copiar(DESCRICOES[p.tipo], 'Descrição copiada');
+      else if (p) toast('Defina o tipo de atendimento antes de copiar.');
       break;
     }
     case 'copiar-texto':
@@ -986,7 +1237,8 @@ const FORMULARIOS = {
   senha: f => trocarSenha(f),
   apagar: f => apagarTudo(f),
   importar: f => concluirImportacao(f),
-  csv: f => exportarCsv(f)
+  csv: f => exportarCsv(f),
+  planilha: f => aplicarPlanilha()
 };
 
 document.addEventListener('click', e => {
@@ -1022,6 +1274,10 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   if (e.target.id === 'arquivo-backup' && e.target.files && e.target.files[0]) {
     lerArquivoBackup(e.target.files[0]);
+    e.target.value = '';
+  }
+  if (e.target.id === 'arquivo-planilha' && e.target.files && e.target.files[0]) {
+    lerArquivoPlanilha(e.target.files[0]);
     e.target.value = '';
   }
 });
